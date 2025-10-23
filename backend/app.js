@@ -6,6 +6,7 @@ const db = require('./db');
 const app = express();
 const port = 3000;
 
+//------------------ Login + Register ---------------------------/
 app.use(cors({
   origin: '*', 
   methods: ['GET', 'POST'],
@@ -103,3 +104,13 @@ app.get('/api/me', verifyToken, (req, res) => {
 app.listen(port, '0.0.0.0', () => {
   console.log(`API running at http://localhost:${port}`);
 });
+
+//------------------  ---------------------------/
+
+
+
+
+
+
+
+//------------------ ---------------------------/
