@@ -10,6 +10,7 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
+// Function Register
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
@@ -20,6 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
+//เงื่อนไขของพวก username กับ password 
   Future<void> _register() async {
     final name = _nameController.text.trim();
     final username = _usernameController.text.trim();
@@ -35,7 +37,6 @@ class _RegisterPageState extends State<RegisterPage> {
       _showDialog("Passwords do not match.");
       return;
     }
-
     setState(() => _isLoading = true);
 
     try {
