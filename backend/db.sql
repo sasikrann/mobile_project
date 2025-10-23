@@ -3,15 +3,16 @@ USE room_booking;
 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
   username VARCHAR(50) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   role ENUM('student','staff','lecturer') NOT NULL DEFAULT 'student'
 );
 
-INSERT INTO users (username, password, role) VALUES
-('student', '$2b$10$5qM8Doz0pZ4E6uXHqB9L5OGb6kB5kBBYl4f0M4HruY3soVQvTjB/C', 'student'),
-('staff', '$2b$10$5qM8Doz0pZ4E6uXHqB9L5OGb6kB5kBBYl4f0M4HruY3soVQvTjB/C', 'staff'),
-('lecturer', '$2b$10$5qM8Doz0pZ4E6uXHqB9L5OGb6kB5kBBYl4f0M4HruY3soVQvTjB/C', 'lecturer');
+INSERT INTO users (name, username, password, role) VALUES
+('john','student', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'student'),
+('harry','staff', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'staff'),
+('peter','lecturer', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'lecturer');
 
 CREATE TABLE rooms (
   id INT AUTO_INCREMENT PRIMARY KEY,

@@ -2,6 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../student/stu_homepage.dart';
+import '../staff/staff_homepage.dart';
+import '../lecturer/lec_homepage.dart';
+import './register.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -9,12 +14,14 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+// Function Log-in 
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+//เงื่อนไขของพวก username กับ password 
   Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
@@ -30,7 +37,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-
     setState(() => _isLoading = true);
 
     try {
@@ -43,15 +49,31 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        _showDialog("Login successful: ${data['user']['role']}"); //รอแก้
+        final role = data['user']['role'];
+        if (!mounted) return;
 
+        if (role == 'student') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const StudentHomePage()),
+          );
+        } else if (role == 'staff') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const StaffHomePage()),
+          );
+        } else if (role == 'lecturer') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LecturerHomePage()),
+          );
+        }
       } else {
         _showDialog("${data['message']}");
       }
     } catch (e) {
       _showDialog("⚠️ Connection error: $e");
     }
-
     setState(() => _isLoading = false);
   }
 
@@ -79,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-
+                // โลโก้
                 Container(
                     padding: const EdgeInsets.all(20),
                     child: ClipRRect(
@@ -92,14 +114,16 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 20),
+                  
+                // ชื่อ 
+                const SizedBox(height: 5),
                 const Text(
                   "Room Booking",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 30),
 
-                // Username field
+                // Username 
                 TextField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -110,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password field
+                // Password 
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -130,22 +154,9 @@ class _LoginPageState extends State<LoginPage> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
+                const SizedBox(height: 30),
 
-                // Forgot Password (placeholder)
-                Container(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      "Forgot Password?",
-                      style: TextStyle(color: Color(0xFFDD0303)),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Sign In Button
+                 // Sign In 
                 SizedBox(
                   width: double.infinity,
                   height: 45,
@@ -169,17 +180,19 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 25),
 
-                const SizedBox(height: 15),
-
-                // Register Link
+                 // Register here
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text("Don’t have an account? "),
                     GestureDetector(
                       onTap: () {
-                      
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const RegisterPage()),
+                        );
                       },
                       child: const Text(
                         "Register here",
