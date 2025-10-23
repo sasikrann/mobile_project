@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../student/stu_homepage.dart';
+import '../student/student_homepage.dart';
 import '../staff/staff_homepage.dart';
-import '../lecturer/lec_homepage.dart';
+import '../lecturer/lecturer_homepage.dart';
 import './register.dart';
 
 class LoginPage extends StatefulWidget {
