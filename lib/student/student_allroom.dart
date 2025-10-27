@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'student_bookingpage.dart';
 
-class LecturerHomePage extends StatefulWidget {
-  const LecturerHomePage({super.key});
+class StudentAllRoomPage extends StatefulWidget {
+  const StudentAllRoomPage({super.key});
 
   @override
-  State<LecturerHomePage> createState() => _LecturerHomePageState();
+  State<StudentAllRoomPage> createState() => _StudentAllRoomPageState();
 }
 
-class _LecturerHomePageState extends State<LecturerHomePage>
+class _StudentAllRoomPageState extends State<StudentAllRoomPage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
+  late AnimationController _staggerController;
   late AnimationController _floatingController;
-  int _selectedIndex = 1; // ค่าเริ่มต้นที่ Grid (All Rooms)
+  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+
+    _staggerController = AnimationController(
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     )..forward();
 
@@ -31,9 +38,48 @@ class _LecturerHomePageState extends State<LecturerHomePage>
   @override
   void dispose() {
     _fadeController.dispose();
+    _staggerController.dispose();
     _floatingController.dispose();
     super.dispose();
   }
+
+  // เมื่อกดปุ่ม BOOK
+  void _tryBooking(String title, String status) {
+    if (status == 'Free') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const BookingPage(),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Can’t booking this room ❌"),
+          backgroundColor: Colors.grey.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  // ห้อง
+//   List<dynamic> rooms = [];
+
+// Future<void> fetchRooms() async {
+//   final response = await http.get(
+//     Uri.parse('http://192.168.1.100:3000/api/rooms'), // 👈 เปลี่ยนเป็น IP เครื่องของคุณ
+//   );
+
+//   if (response.statusCode == 200) {
+//     final data = json.decode(response.body);
+//     setState(() {
+//       rooms = data['rooms']; // อ่านจาก field ใน JSON ที่ server ส่งมา
+//     });
+//   } else {
+//     print('Failed to load rooms');
+//   }
+// }
 
   final List<Map<String, dynamic>> rooms = [
     {'name': 'Room 1', 'status': 'Reserved', 'image': 'assets/Room1.png', 'capacity': 8},
@@ -44,6 +90,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     {'name': 'Room 6', 'status': 'Reserved', 'image': 'assets/Room6.png', 'capacity': 10},
   ];
 
+  // สีและไอคอนสถานะ
   Color getStatusColor(String status) {
     switch (status) {
       case 'Free':
@@ -83,28 +130,17 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     }
   }
 
+  // Navigation bar
   void _onTabTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
-    if (index == 0) {
+    if (index == 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Home 🏠')),
-      );
-    } else if (index == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Viewing All Rooms 🏢')),
+        const SnackBar(content: Text('Go to Booking History 📜')),
       );
     } else if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Notifications 🔔')),
-      );
-    } else if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Schedule ⏰')),
-      );
-    } else if (index == 4) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Go to Settings ⚙️')),
       );
@@ -144,7 +180,9 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                       builder: (context, child) {
                         return Transform.translate(
                           offset: Offset(
-                              0, -3 * math.sin(_floatingController.value * math.pi)),
+                            0,
+                            -3 * math.sin(_floatingController.value * math.pi),
+                          ),
                           child: Container(
                             width: 55,
                             height: 55,
@@ -162,7 +200,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                     const Text(
                       'All Rooms',
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1A1A2E),
                       ),
@@ -186,6 +224,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                 itemBuilder: (context, index) {
                   final room = rooms[index];
                   final status = room['status'];
+                  final isAvailable = status == 'Free';
 
                   return Container(
                     decoration: BoxDecoration(
@@ -206,6 +245,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // รูปห้อง
                         Expanded(
                           child: Stack(
                             children: [
@@ -259,7 +299,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                           ),
                         ),
 
-                        // 🔸 ชื่อห้อง + ความจุ (ไม่มีปุ่ม BOOK)
+                        // ชื่อห้อง + ความจุ + ปุ่ม BOOK
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                           child: Column(
@@ -280,6 +320,40 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              const SizedBox(height: 6),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ElevatedButton(
+                                  onPressed: () =>
+                                      _tryBooking(room['name'], status),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isAvailable
+                                        ? const Color(0xFFDD0303)
+                                        : Colors.grey.shade400,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 6,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: isAvailable
+                                      ? const Text(
+                                          'BOOK',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.arrow_forward_ios_rounded,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -290,7 +364,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
               ),
             ),
 
-            // 🔹 Bottom Navigation (5 Tabs)
+            // 🔹 Bottom Navigation Bar
             Container(
               height: 70 + safe,
               padding: EdgeInsets.only(bottom: safe),
@@ -305,10 +379,8 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildNavIcon(Icons.home, 0),
-                  _buildNavIcon(Icons.grid_view_rounded, 1),
-                  _buildNavIcon(Icons.notifications_rounded, 2),
-                  _buildNavIcon(Icons.access_time_rounded, 3),
-                  _buildNavIcon(Icons.settings, 4),
+                  _buildNavIcon(Icons.receipt_long_rounded, 1),
+                  _buildNavIcon(Icons.settings, 2),
                 ],
               ),
             ),
@@ -322,17 +394,10 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     bool isSelected = _selectedIndex == index;
     return GestureDetector(
       onTap: () => _onTabTapped(index),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isSelected ? const Color(0xFFDD0303) : Colors.grey.shade300,
-        ),
+      child: Icon(
+        icon,
+        size: 30,
+        color: isSelected ? Colors.white : Colors.grey.shade300,
       ),
     );
   }
