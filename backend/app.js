@@ -101,16 +101,41 @@ app.get('/api/me', verifyToken, (req, res) => {
   res.json({ message: 'Token valid', user: req.user });
 });
 
+//------------------  ---------------------------/
+
+app.get('/api/rooms', (req, res) => {
+  const sql = 'SELECT * FROM rooms';
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    res.status(200).json({
+      message: 'Fetched all rooms successfully',
+      rooms: result,
+    });
+  });
+});
+
+
+app.get('/api/rooms/:id', (req, res) => {
+  const roomId = req.params.id;
+  const sql = 'SELECT * FROM rooms WHERE id = ?';
+  db.query(sql, [roomId], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    if (result.length === 0)
+      return res.status(404).json({ message: 'Room not found' });
+
+    res.status(200).json({
+      message: 'Fetched room successfully',
+      room: result[0],
+    });
+  });
+});
+
+//------------------ ---------------------------/
+
+// ให้โค้ดนี้อยู่ล่างสุดเสมอ
 app.listen(port, '0.0.0.0', () => {
   console.log(`API running at http://localhost:${port}`);
 });
-
-//------------------  ---------------------------/
-
-
-
-
-
-
-
-//------------------ ---------------------------/
