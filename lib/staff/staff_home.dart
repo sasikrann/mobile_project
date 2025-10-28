@@ -51,12 +51,12 @@ class _StaffHome extends State<StaffHome> {
   final ImagePicker _picker = ImagePicker();
 
   final List<Room> _rooms = [
-    Room(id: 1, name: 'Room 101', description: 'Bright room with window.', isReserved: false, isOpen: true),
-    Room(id: 2, name: 'Room 102', description: 'Quiet room near garden.', isReserved: true, isOpen: true),
-    Room(id: 3, name: 'Board Room', description: 'Large meeting room.', isReserved: false, isOpen: false),
-    Room(id: 4, name: 'Lab A', description: 'Computer lab with 20 PCs.', isReserved: true, isOpen: true),
-    Room(id: 5, name: 'Lab B', description: 'Chemistry lab, safety ready.', isReserved: false, isOpen: true),
-    Room(id: 6, name: 'Auditorium', description: 'Hall with 100 seats.', isReserved: false, isOpen: false),
+    Room(id: 1, name: 'Room 1', description: '8', isReserved: false, isOpen: true),
+    Room(id: 2, name: 'Room 2', description: '12', isReserved: true, isOpen: true),
+    Room(id: 3, name: 'Room 3', description: '8', isReserved: false, isOpen: false),
+    Room(id: 4, name: 'Room 4', description: '6', isReserved: true, isOpen: true),
+    Room(id: 5, name: 'Room 5', description: '12', isReserved: false, isOpen: true),
+    Room(id: 6, name: 'Room 6', description: '10', isReserved: false, isOpen: false),
   ];
 
   int _nextId = 100;
@@ -190,10 +190,12 @@ class _StaffHome extends State<StaffHome> {
     final rooms = _filteredRooms;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFEF3E2),
      
 
       // Add bottom padding so FAB sits above custom nav bar if embedded
       body: SafeArea(
+        
         child: Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 88),
           child: Column(
@@ -236,8 +238,8 @@ class _StaffHome extends State<StaffHome> {
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: rooms.isEmpty
                       ? const Center(child: Text('No rooms found'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(top: 8, bottom: 12),
+                      : ListView.builder(         
+                          padding: const EdgeInsets.only(top: 16, bottom: 12),
                           itemCount: rooms.length,
                           itemBuilder: (context, idx) {
                             final r = rooms[idx];
@@ -250,17 +252,17 @@ class _StaffHome extends State<StaffHome> {
                         ),
                 ),
               ),
+
+              FloatingActionButton(onPressed: () => _showAddEditDialog(),
+              backgroundColor: const Color(0xFFDD0303),
+              
+              child: const Icon(Icons.add, color: Colors.white,),
+              )
             ],
           ),
         ),
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditDialog(),
-        backgroundColor: const Color(0xFFDD0303),
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
     );
   }
 
@@ -305,7 +307,6 @@ class _RoomCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: onEdit, // tapping card opens edit (if enabled)
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -342,7 +343,7 @@ class _RoomCard extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(room.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                Text(room.description, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                Text('Capacity: ' + room.description, style: const TextStyle(fontSize: 13, color: Colors.black87)),
               ]),
             ),
 
@@ -355,8 +356,9 @@ class _RoomCard extends StatelessWidget {
                   // Edit button (disabled when reserved)
                   TextButton.icon(
                     onPressed: onEdit,
-                    icon: Icon(Icons.edit, color: onEdit == null ? Colors.grey : const Color(0xFFDD0303)),
-                    label: Text('Edit', style: TextStyle(color: onEdit == null ? Colors.grey : const Color(0xFFDD0303))),
+                    style: ButtonStyle( backgroundColor: isReserved ==true ? WidgetStatePropertyAll<Color>(const Color.fromARGB(255, 220, 220, 220)) : WidgetStatePropertyAll<Color>(Color(0xFFDD0303)) ),
+                    icon: Icon(Icons.edit, color: isReserved == true ? Colors.grey : Colors.white),
+                    label: Text('Edit', style: TextStyle(color: isReserved == true ? Colors.grey : Colors.white)),
                   ),
 
                   // Open/Close switch (disabled when reserved)
@@ -372,7 +374,7 @@ class _RoomCard extends StatelessWidget {
                           child: Switch(
                             value: isOpen,
                             onChanged: (_) => onToggleOpen(),
-                            activeColor: isOpen ? Colors.green : Colors.orange,
+                            activeColor: isOpen ? Colors.green : Color(0xFFDD0303),
                           ),
                         ),
                       ),
