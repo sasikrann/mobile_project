@@ -12,7 +12,6 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _floatingController;
-  int _selectedIndex = 1; // ค่าเริ่มต้นที่ Grid (All Rooms)
 
   @override
   void initState() {
@@ -83,34 +82,6 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     }
   }
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    if (index == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Home 🏠')),
-      );
-    } else if (index == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Viewing All Rooms 🏢')),
-      );
-    } else if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Notifications 🔔')),
-      );
-    } else if (index == 3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Schedule ⏰')),
-      );
-    } else if (index == 4) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Settings ⚙️')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final double safe = MediaQuery.of(context).padding.bottom;
@@ -118,63 +89,68 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     return Scaffold(
       backgroundColor: const Color(0xFFFEF3E2),
       body: SafeArea(
-        child: Column(
-          children: [
-            // 🔹 Header
-            FadeTransition(
-              opacity: _fadeController,
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _floatingController,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(
-                              0, -3 * math.sin(_floatingController.value * math.pi)),
-                          child: Container(
-                            width: 55,
-                            height: 55,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: const Color(0xFFDD0303),
-                            ),
-                            child: Image.asset('assets/logo.png',
-                                fit: BoxFit.contain),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'All Rooms',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A1A2E),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(bottom: safe + 100),
+          child: Column(
+            children: [
+              // 🔹 Header
+              FadeTransition(
+                opacity: _fadeController,
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      AnimatedBuilder(
+                        animation: _floatingController,
+                        builder: (context, child) {
+                          return Transform.translate(
+                            offset: Offset(
+                                0, -3 * math.sin(_floatingController.value * math.pi)),
+                            child: Container(
+                              width: 55,
+                              height: 55,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: const Color(0xFFDD0303),
+                              ),
+                              child: Image.asset(
+                                'assets/logo.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'All Rooms',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // 🔹 Room Grid
-            Expanded(
-              child: GridView.builder(
+              // 🔹 GridView (wrapped inside shrinkWrap List)
+              GridView.builder(
+                shrinkWrap: true, // ✅ ให้แสดงครบโดยไม่ฟิกขนาด
+                physics: const NeverScrollableScrollPhysics(), // ✅ ป้องกัน scroll ซ้ำ
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -258,8 +234,6 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                             ],
                           ),
                         ),
-
-                        // 🔸 ชื่อห้อง + ความจุ (ไม่มีปุ่ม BOOK)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                           child: Column(
@@ -288,50 +262,8 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                   );
                 },
               ),
-            ),
-
-            // 🔹 Bottom Navigation (5 Tabs)
-            Container(
-              height: 70 + safe,
-              padding: EdgeInsets.only(bottom: safe),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDD0303),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavIcon(Icons.home, 0),
-                  _buildNavIcon(Icons.grid_view_rounded, 1),
-                  _buildNavIcon(Icons.notifications_rounded, 2),
-                  _buildNavIcon(Icons.access_time_rounded, 3),
-                  _buildNavIcon(Icons.settings, 4),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavIcon(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onTabTapped(index),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          size: 26,
-          color: isSelected ? const Color(0xFFDD0303) : Colors.grey.shade300,
+            ],
+          ),
         ),
       ),
     );

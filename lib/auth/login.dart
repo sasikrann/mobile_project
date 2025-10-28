@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../lecturer/lecturer_homepage.dart';
 import './register.dart';
 import '../staff/staff_shell.dart';
 import '../student/student_shell.dart';
+import '../lecturer/lecturer_shell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
         } else if (role == 'lecturer') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const LecturerHomePage()),
+            MaterialPageRoute(builder: (_) => const LecturerShell()),
           );
         }
       } else {
