@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../student/student_homepage.dart';
-import '../staff/staff_homepage.dart';
 import '../lecturer/lecturer_homepage.dart';
 import './register.dart';
+import '../staff/staff_shell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -60,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
         } else if (role == 'staff') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const StaffHomePage()),
+            MaterialPageRoute(builder: (_) => const StaffShell()),
           );
         } else if (role == 'lecturer') {
           Navigator.pushReplacement(
