@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 import 'student_bookingpage.dart';
 
 class StudentHomePage extends StatefulWidget {
@@ -13,8 +12,7 @@ class _StudentHomePageState extends State<StudentHomePage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _staggerController;
-  late AnimationController _floatingController;
-  int _selectedIndex = 0;
+
 
   @override
   void initState() {
@@ -28,18 +26,12 @@ class _StudentHomePageState extends State<StudentHomePage>
       duration: const Duration(milliseconds: 900),
       vsync: this,
     )..forward();
-
-    _floatingController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
     _staggerController.dispose();
-    _floatingController.dispose();
     super.dispose();
   }
 
@@ -112,27 +104,8 @@ class _StudentHomePageState extends State<StudentHomePage>
     }
   }
 
-  // Navigation bar
-  void _onTabTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    if (index == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Booking History 📜')),
-      );
-    } else if (index == 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Settings ⚙️')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final double safe = MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
       backgroundColor: const Color(0xFFFEF3E2),
       body: SafeArea(
@@ -157,26 +130,17 @@ class _StudentHomePageState extends State<StudentHomePage>
                 ),
                 child: Row(
                   children: [
-                    AnimatedBuilder(
-                      animation: _floatingController,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(
-                            0,
-                            -3 * math.sin(_floatingController.value * math.pi),
-                          ),
-                          child: Container(
-                            width: 55,
-                            height: 55,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              color: const Color(0xFFDD0303),
-                            ),
-                            child: Image.asset('assets/logo.png',
-                                fit: BoxFit.contain),
-                          ),
-                        );
-                      },
+                    Container(
+                      width: 55,
+                      height: 55,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: const Color(0xFFDD0303),
+                      ),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Text(
@@ -195,7 +159,7 @@ class _StudentHomePageState extends State<StudentHomePage>
             // 🔹 Room Grid
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 20,
@@ -345,43 +309,9 @@ class _StudentHomePageState extends State<StudentHomePage>
                 },
               ),
             ),
-
-            // 🔹 Bottom Navigation Bar
-            Container(
-              height: 70 + safe,
-              padding: EdgeInsets.only(bottom: safe),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDD0303),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildNavIcon(Icons.home, 0),
-                  _buildNavIcon(Icons.receipt_long_rounded, 1),
-                  _buildNavIcon(Icons.settings, 2),
-                ],
-              ),
-            ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildNavIcon(IconData icon, int index) {
-    bool isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onTabTapped(index),
-      child: Icon(
-        icon,
-        size: 30,
-        color: isSelected ? Colors.white : Colors.grey.shade300,
-      ),
-    );
-  }
 }
-

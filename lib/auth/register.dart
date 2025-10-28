@@ -68,6 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = false);
   }
 
+  // Alert ตอนกด 
   void _showDialog(String message) {
     showDialog(
       context: context,
@@ -81,6 +82,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  // สร้าง Account 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,8 +101,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                
+                // Name 
                 const SizedBox(height: 30),
-
                 TextField(
                   controller: _nameController,
                   decoration: InputDecoration(
@@ -111,8 +114,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
 
+                // Username
+                const SizedBox(height: 20),
                 TextField(
                   controller: _usernameController,
                   decoration: InputDecoration(
@@ -123,8 +127,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
 
+                // Password
+                const SizedBox(height: 20),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -148,8 +153,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
 
+                // Confirm Password
+                const SizedBox(height: 20),
                 TextField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirm,
@@ -174,8 +180,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
 
+                // ปุ่มกดสร้าง Account 
                 const SizedBox(height: 30),
-
                 SizedBox(
                   width: double.infinity,
                   height: 45,
@@ -199,6 +205,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
 
+                // Already have an account?
                 const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
