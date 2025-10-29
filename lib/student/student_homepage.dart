@@ -58,7 +58,7 @@ class _StudentHomePageState extends State<StudentHomePage>
     if (status == 'Free') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const BookRoomPage()),
+        MaterialPageRoute(builder: (_) => const MyBookingsPage()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

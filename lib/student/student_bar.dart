@@ -23,13 +23,11 @@ class StudentBar extends StatefulWidget {
 
 class _StudentBarState extends State<StudentBar> {
   int _currentIndex = 0;
-  late PageController _pc; // ❗️ไม่ต้องใช้ final
+  late PageController _pc;
 
   @override
   void initState() {
     super.initState();
-
-    // ✅ เซ็ตค่าตอนเริ่มที่นี่
     _currentIndex = widget.initialIndex;
     _pc = PageController(initialPage: _currentIndex);
   }
@@ -132,15 +130,15 @@ class _CapsuleIconBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double itemWidth = 60;
+    const double itemWidth = 72; // ✅ เพิ่มระยะกว้างของแต่ละช่อง
     const double itemHeight = 50;
-    const double gap = 8;
+    const double gap = 56;       // ✅ ช่องว่างระหว่าง icon กว้างขึ้น
     final double totalWidth =
         (items.length * itemWidth) + ((items.length - 1) * gap);
 
     return Container(
       padding: const EdgeInsets.all(6),
-      margin: const EdgeInsets.symmetric(horizontal: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 28), // เพิ่ม margin ด้านข้าง
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFFDD0303), Color(0xFFB80202)],
@@ -237,7 +235,7 @@ class _IconPillButton extends StatelessWidget {
           curve: Curves.easeOutCubic,
           child: Icon(
             icon,
-            size: 24,
+            size: 40, // ลดขนาดเล็กนิดเพื่อบาลานซ์ช่อง
             color: active
                 ? const Color(0xFFDD0303)
                 : Colors.white.withOpacity(0.7),
