@@ -11,6 +11,7 @@ class LecturerHomePage extends StatefulWidget {
 class _LecturerHomePageState extends State<LecturerHomePage>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
+  late AnimationController _staggerController;
   late AnimationController _floatingController;
 
   @override
@@ -18,6 +19,11 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     super.initState();
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..forward();
+
+    _staggerController = AnimationController(
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     )..forward();
 
@@ -30,6 +36,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
   @override
   void dispose() {
     _fadeController.dispose();
+    _staggerController.dispose();
     _floatingController.dispose();
     super.dispose();
   }
@@ -72,7 +79,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
   IconData getStatusIcon(String status) {
     switch (status) {
       case 'Free':
-        return Icons.check_circle;
+        return Icons.check_circle_rounded;
       case 'Reserved':
         return Icons.schedule_rounded;
       case 'Disabled':
@@ -87,171 +94,158 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     final double safe = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFEF3E2),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(bottom: safe + 100),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFFFFBF5),
+              Color(0xFFFFF5E6),
+              Color(0xFFFFE8CC),
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔹 Header
+              // Enhanced Header with glassmorphism
               FadeTransition(
                 opacity: _fadeController,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -0.2),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _fadeController,
+                      curve: Curves.easeOut,
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      AnimatedBuilder(
-                        animation: _floatingController,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(
-                                0, -3 * math.sin(_floatingController.value * math.pi)),
-                            child: Container(
-                              width: 55,
-                              height: 55,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: const Color(0xFFDD0303),
-                              ),
-                              child: Image.asset(
-                                'assets/logo.png',
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'All Rooms',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A2E),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 🔹 GridView (wrapped inside shrinkWrap List)
-              GridView.builder(
-                shrinkWrap: true, // ✅ ให้แสดงครบโดยไม่ฟิกขนาด
-                physics: const NeverScrollableScrollPhysics(), // ✅ ป้องกัน scroll ซ้ำ
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  childAspectRatio: 0.9,
-                ),
-                itemCount: rooms.length,
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
-                  final status = room['status'];
-
-                  return Container(
+                  child: Container(
+                    margin: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.9),
+                          Colors.white.withOpacity(0.7),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: getStatusColor(status).withOpacity(0.25),
-                        width: 1.5,
+                        color: Colors.white.withOpacity(0.5),
+                        width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: getStatusColor(status).withOpacity(0.15),
-                          blurRadius: 8,
+                          color: const Color(0xFFDD0303).withOpacity(0.15),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                          spreadRadius: -4,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Stack(
+                          child: Row(
                             children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(20),
-                                ),
-                                child: Image.asset(
-                                  room['image'],
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              ),
-                              Positioned(
-                                top: 10,
-                                right: 10,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: getStatusBg(status),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: getStatusColor(status)
-                                          .withOpacity(0.4),
+                              // Logo animation
+                              AnimatedBuilder(
+                                animation: _floatingController,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(
+                                      0,
+                                      -3 * math.sin(_floatingController.value * math.pi),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        getStatusIcon(status),
-                                        color: getStatusColor(status),
-                                        size: 14,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(18),
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Color(0xFFDD0303),
+                                            Color(0xFFFF4444),
+                                          ],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFDD0303).withOpacity(0.35),
+                                            blurRadius: 14,
+                                            offset: const Offset(0, 5),
+                                            spreadRadius: -2,
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        status,
-                                        style: TextStyle(
-                                          color: getStatusColor(status),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: Container(
+                                          width: 70,
+                                          height: 70,
+                                          padding: const EdgeInsets.all(2),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(16),
+                                            child: Image.asset(
+                                              'assets/logo.png',
+                                              fit: BoxFit.cover,
+                                              cacheWidth: 140,
+                                              cacheHeight: 140,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
+                                  );
+                                },
                               ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                room['name'],
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              Text(
-                                'Capacity : ${room['capacity']}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 16),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'All Rooms',
+                                      style: TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF1A1A2E),
+                                        letterSpacing: -0.8,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 2,
+                                          backgroundColor: Color(0xFFDD0303),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Manage your spaces',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Color(0xFF64748B),
+                                            fontWeight: FontWeight.w600,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -259,10 +253,297 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                ),
+              ),
+
+              // Room Grid
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 20,
+                    childAspectRatio: 0.82,
+                  ),
+                  padding: EdgeInsets.fromLTRB(20, 0, 20, safe + 100),
+                  itemCount: rooms.length,
+                  physics: const BouncingScrollPhysics(),
+                  itemBuilder: (context, index) {
+                    final room = rooms[index];
+                    return _AnimatedRoomCard(
+                      index: index,
+                      controller: _staggerController,
+                      title: room['name'],
+                      status: room['status'],
+                      capacity: room['capacity'],
+                      statusColor: getStatusColor(room['status']),
+                      statusBgColor: getStatusBg(room['status']),
+                      statusIcon: getStatusIcon(room['status']),
+                      imageUrl: room['image'],
+                    );
+                  },
+                ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedRoomCard extends StatefulWidget {
+  const _AnimatedRoomCard({
+    required this.index,
+    required this.controller,
+    required this.title,
+    required this.status,
+    required this.capacity,
+    required this.statusColor,
+    required this.statusBgColor,
+    required this.statusIcon,
+    required this.imageUrl,
+  });
+
+  final int index;
+  final AnimationController controller;
+  final String title;
+  final String status;
+  final int capacity;
+  final Color statusColor;
+  final Color statusBgColor;
+  final IconData statusIcon;
+  final String imageUrl;
+
+  @override
+  State<_AnimatedRoomCard> createState() => _AnimatedRoomCardState();
+}
+
+class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final delay = widget.index * 0.08;
+    final animation = CurvedAnimation(
+      parent: widget.controller,
+      curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return Opacity(
+          opacity: animation.value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - animation.value)),
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Opening ${widget.title}')),
+          );
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedScale(
+          scale: _isPressed ? 0.95 : 1.0,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOut,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: widget.statusColor.withOpacity(0.2),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.statusColor.withOpacity(_isPressed ? 0.25 : 0.18),
+                  blurRadius: _isPressed ? 28 : 24,
+                  offset: Offset(0, _isPressed ? 10 : 8),
+                  spreadRadius: -3,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image Section
+                Expanded(
+                  child: Stack(
+                    children: [
+                      // Room Image
+                      Hero(
+                        tag: 'room_${widget.title}',
+                        child: Container(
+                          margin: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.asset(
+                                  widget.imageUrl,
+                                  fit: BoxFit.cover,
+                                  cacheWidth: 400,
+                                  cacheHeight: 400,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: widget.statusBgColor,
+                                      child: Icon(
+                                        Icons.meeting_room_rounded,
+                                        size: 48,
+                                        color: widget.statusColor.withOpacity(0.5),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                // Gradient overlay
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withOpacity(0.25),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Status Badge
+                      Positioned(
+                        top: 22,
+                        right: 22,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 500 + widget.index * 60),
+                          curve: Curves.easeOut,
+                          builder: (context, value, child) {
+                            return Opacity(opacity: value, child: child);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: widget.statusBgColor,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: widget.statusColor.withOpacity(0.4),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: widget.statusColor.withOpacity(0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  widget.statusIcon,
+                                  size: 14,
+                                  color: widget.statusColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  widget.status,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: widget.statusColor,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Title and Action Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.title,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1A1A2E),
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.people_alt_rounded,
+                                  size: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Capacity ${widget.capacity}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF64748B).withOpacity(0.7),
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
