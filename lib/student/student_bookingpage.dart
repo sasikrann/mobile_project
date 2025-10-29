@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'student_shell.dart'; 
-// import 'student_historypage.dart';
 
 class BookRoomPage extends StatefulWidget {
   const BookRoomPage({super.key});
@@ -243,7 +242,7 @@ class ConfirmBookingPage extends StatelessWidget {
                   // ✅ กลับไปหน้า homepage เมื่อจองเสร็จ
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const BookRoomPage()),
+                    MaterialPageRoute(builder: (_) => const StudentShell(initialIndex: 1)),
                   );
                 },
                 child: const Text(

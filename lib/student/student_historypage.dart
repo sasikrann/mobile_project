@@ -36,6 +36,7 @@ class MyBookingsPage extends StatelessWidget {
         backgroundColor: const Color(0xFFD61F26),
         centerTitle: true,
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: const Text(
           'My Bookings',
           style: TextStyle(
@@ -43,12 +44,6 @@ class MyBookingsPage extends StatelessWidget {
             fontSize: 18,
             color: Colors.white,
           ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
         ),
       ),
       body: Center(

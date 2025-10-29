@@ -8,12 +8,14 @@ class StudentBar extends StatefulWidget {
     required this.history,
     required this.profile,
     this.backgroundColor = Colors.transparent,
+    this.initialIndex = 0,
   });
 
   final Widget home;
   final Widget history;
   final Widget profile;
   final Color backgroundColor;
+  final int initialIndex;
 
   @override
   State<StudentBar> createState() => _StudentBarState();
@@ -21,7 +23,16 @@ class StudentBar extends StatefulWidget {
 
 class _StudentBarState extends State<StudentBar> {
   int _currentIndex = 0;
-  late final PageController _pc = PageController(initialPage: 0);
+  late PageController _pc; // ❗️ไม่ต้องใช้ final
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ เซ็ตค่าตอนเริ่มที่นี่
+    _currentIndex = widget.initialIndex;
+    _pc = PageController(initialPage: _currentIndex);
+  }
 
   List<Widget> get _pages => [
         widget.home,
