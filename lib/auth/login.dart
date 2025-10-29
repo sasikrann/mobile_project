@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import '../student/student_homepage.dart';
-import '../staff/staff_homepage.dart';
-import '../lecturer/lecturer_homepage.dart';
 import './register.dart';
+import '../staff/staff_shell.dart';
+import '../student/student_shell.dart';
+import '../lecturer/lecturer_shell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.132:3000/api/login'), 
+        Uri.parse('http://192.168.0.100:3000/api/login'), 
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'username': username, 'password': password}),
       );
@@ -55,17 +55,17 @@ class _LoginPageState extends State<LoginPage> {
         if (role == 'student') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const StudentHomePage()),
+            MaterialPageRoute(builder: (_) => const StudentShell()),
           );
         } else if (role == 'staff') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const StaffHomePage()),
+            MaterialPageRoute(builder: (_) => const StaffShell()),
           );
         } else if (role == 'lecturer') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const LecturerHomePage()),
+            MaterialPageRoute(builder: (_) => const LecturerShell()),
           );
         }
       } else {
