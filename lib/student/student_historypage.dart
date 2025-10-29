@@ -1,217 +1,80 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const RoomBookingApp());
-}
-
-class RoomBookingApp extends StatelessWidget {
-  const RoomBookingApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Room Booking',
+void main() => runApp(const MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: false,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF8EBDD), // สีพื้นหลังครีม
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFD61F26), // แดงหัวแถบ
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          elevation: 0,
-          titleTextStyle: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      home: const BookRoomPage(),
-    );
-  }
-}
+      home: MyBookingsPage(),
+    ));
 
-class _IconPillButton extends StatelessWidget {
-  const _IconPillButton({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
+class MyBookingsPage extends StatelessWidget {
+  const MyBookingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Center(
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 200),
-          scale: active ? 1.1 : 0.95,
-          curve: Curves.easeOutCubic,
-          child: Icon(
-            icon,
-            size: 24,
-            color: active ? const Color(0xFFDD0303) : Colors.white.withOpacity(0.7),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class BookRoomPage extends StatefulWidget {
-  const BookRoomPage({super.key});
-
-  @override
-  State<BookRoomPage> createState() => _BookRoomPageState();
-}
-
-class _BookRoomPageState extends State<BookRoomPage> {
-  String? selectedTime;
-  final TextEditingController purposeController = TextEditingController();
-
-  final List<Map<String, String>> timeSlots = [
-    {'start': '08:00', 'end': '10:00'},
-    {'start': '10:00', 'end': '12:00'},
-    {'start': '13:00', 'end': '15:00'},
-    {'start': '15:00', 'end': '17:00'},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final formattedDate =
-        "${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}";
+    // 📌 ตัวอย่างข้อมูล (เปลี่ยนเป็น [] เพื่อทดสอบ No reservations found)
+    final bookings = <_Booking>[
+      _Booking(
+          room: 'Room 1',
+          date: '10 Oct 2025',
+          time: '10:00 - 12:00',
+          status: BookingStatus.confirmed,
+          approver: 'Sophia Bennett'),
+      _Booking(
+          room: 'Room 2',
+          date: '11 Oct 2025',
+          time: '13:00 - 15:00',
+          status: BookingStatus.pending),
+      _Booking(
+          room: 'Room 3',
+          date: '14 Oct 2025',
+          time: '10:00 - 12:00',
+          status: BookingStatus.cancelled),
+    ];
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8EBDD), // พื้นหลังครีม
       appBar: AppBar(
-        title: const Text('Book a Room'),
+        backgroundColor: const Color(0xFFD61F26),
+        centerTitle: true,
+        elevation: 0,
+        title: const Text(
+          'My Bookings',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: Colors.white,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {},
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
       ),
       body: Center(
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Room 1",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text("Date",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 6),
-              TextField(
-                readOnly: true,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  filled: true,
-                  fillColor: const Color(0xFFF4F4F4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: const Icon(Icons.calendar_today, size: 20),
-                  hintText: formattedDate,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text("Time", style: TextStyle(fontWeight: FontWeight.w500)),
-              Column(
-                children: timeSlots.map((slot) {
-                  String label = "${slot['start']} - ${slot['end']}";
-                  return RadioListTile<String>(
-                    title: Text(label),
-                    value: label,
-                    groupValue: selectedTime,
-                    activeColor: const Color(0xFFD61F26),
-                    onChanged: (value) {
-                      setState(() => selectedTime = value);
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: bookings.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No reservations found',
+                      style: TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: bookings.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final b = bookings[index];
+                      return _BookingCard(booking: b);
                     },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              const Text("Purpose of booking",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: purposeController,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  filled: true,
-                  fillColor: const Color(0xFFF4F4F4),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
                   ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD61F26),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    onPressed: selectedTime == null
-                        ? null
-                        : () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ConfirmBookingPage(
-                                  date: formattedDate,
-                                  time: selectedTime!,
-                                  purpose: purposeController.text.isEmpty
-                                      ? '-'
-                                      : purposeController.text,
-                                ),
-                              ),
-                            );
-                          },
-                    child: const Text("Confirm",
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD9D9D9),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    onPressed: () {},
-                    child: const Text("Cancel",
-                        style: TextStyle(color: Colors.black, fontSize: 16)),
-                  ),
-                ],
-              ),
-            ],
           ),
         ),
       ),
@@ -219,87 +82,154 @@ class _BookRoomPageState extends State<BookRoomPage> {
   }
 }
 
-class ConfirmBookingPage extends StatelessWidget {
+/* ===== Models ===== */
+enum BookingStatus { confirmed, pending, cancelled }
+
+class _Booking {
+  final String room;
   final String date;
   final String time;
-  final String purpose;
-
-  const ConfirmBookingPage({
-    super.key,
+  final BookingStatus status;
+  final String? approver;
+  _Booking({
+    required this.room,
     required this.date,
     required this.time,
-    required this.purpose,
+    required this.status,
+    this.approver,
   });
+}
+
+/* ===== Booking Card ===== */
+class _BookingCard extends StatelessWidget {
+  final _Booking booking;
+  const _BookingCard({required this.booking});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book a Room'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Center(
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+    final chip = _statusChip(booking.status);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Room name + Status chip
+          Row(
             children: [
-              const Icon(Icons.check_circle,
-                  color: Color(0xFF3BAF5D), size: 80),
-              const SizedBox(height: 12),
-              const Text(
-                "Confirm Booking",
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              buildInfoRow("Date", date),
-              buildInfoRow("Time", time),
-              buildInfoRow("Purpose of booking", purpose),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD61F26),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 50, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+              Expanded(
+                child: Text(
+                  booking.room,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1A1A1A),
                   ),
                 ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text("Go to My Booking",
-                    style: TextStyle(color: Colors.white, fontSize: 16)),
               ),
+              chip,
             ],
           ),
-        ),
-      ),
-    );
-  }
+          const SizedBox(height: 8),
 
-  Widget buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("$label: ",
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-          Text(value, style: const TextStyle(fontSize: 16)),
+          // Date + Time
+          Text(
+            '${booking.date}, ${booking.time}',
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Divider line
+          const Divider(color: Color(0xFFE7E7E7), thickness: 1),
+          const SizedBox(height: 8),
+
+          // Details / Cancel button
+          if (booking.status == BookingStatus.confirmed)
+            Text(
+              'Approved by ${booking.approver ?? '-'}',
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+
+          if (booking.status == BookingStatus.pending)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                height: 32,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF5A3A6),
+                    foregroundColor: const Color(0xFF6E1A1A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    elevation: 0,
+                  ),
+                  onPressed: () {},
+                  child: const Text(
+                    'Cancel Booking',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
-}
 
+  // ป้ายสถานะ
+  Widget _statusChip(BookingStatus s) {
+    switch (s) {
+      case BookingStatus.confirmed:
+        return _chip('Confirmed',
+            bg: const Color(0xFFE7F7EC), fg: const Color(0xFF18A05B));
+      case BookingStatus.pending:
+        return _chip('Pending',
+            bg: const Color(0xFFFFF4D7), fg: const Color(0xFFA37D00));
+      case BookingStatus.cancelled:
+        return _chip('Cancelled',
+            bg: const Color(0xFFFDE6E7), fg: const Color(0xFFD33B42));
+    }
+  }
+
+  Widget _chip(String text, {required Color bg, required Color fg}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: fg,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
