@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'student_homepage.dart'; 
+import 'student_shell.dart'; 
 // import 'student_historypage.dart';
 
 class BookRoomPage extends StatefulWidget {
@@ -44,7 +44,7 @@ class _BookRoomPageState extends State<BookRoomPage> {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const StudentHomePage()),
+              MaterialPageRoute(builder: (_) => const StudentShell()),
             );
           },
         ),
@@ -159,7 +159,7 @@ class _BookRoomPageState extends State<BookRoomPage> {
                       // ✅ กลับไปหน้า homepage
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const StudentHomePage()),
+                        MaterialPageRoute(builder: (_) => const StudentShell()),
                       );
                     },
                     child: const Text(
