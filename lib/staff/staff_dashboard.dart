@@ -221,7 +221,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                         iconColor: const Color(0xFFDD0303),
                         iconBgColor: const Color(0xFFFFE8E8),
                         count: '1',
-                        label: 'Disabled',
+                        label: 'Disabled Room',
                       ),
                     ],
                   ),

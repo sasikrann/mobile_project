@@ -19,10 +19,10 @@ class _LecturerHistoryBookingPageState
 
   final List<BookingData> bookings = [
     BookingData(
-      roomNumber: '1',
+      roomNumber: '3',
       date: '15 March 2024',
-      time: '8:00 AM - 10:00',
-      bookedBy: 'Ethan Carter',
+      time: '13:00 AM - 15:00',
+      bookedBy: 'Noah Parker',
       status: BookingStatus.approved,
     ),
     BookingData(
@@ -33,10 +33,10 @@ class _LecturerHistoryBookingPageState
       status: BookingStatus.approved,
     ),
     BookingData(
-      roomNumber: '2',
+      roomNumber: '1',
       date: '15 March 2024',
-      time: '13:00 PM - 15:00',
-      bookedBy: 'Noah Parker',
+      time: '8:00 PM - 10:00',
+      bookedBy: 'Ethan Carter',
       status: BookingStatus.pending,
     ),
     BookingData(
