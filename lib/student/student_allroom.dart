@@ -63,7 +63,7 @@ class _StudentAllRoomPageState extends State<StudentAllRoomPage>
     }
   }
 
-  // ห้อง
+  // ห้องตอนดึงจาก API
 //   List<dynamic> rooms = [];
 
 // Future<void> fetchRooms() async {
@@ -80,6 +80,8 @@ class _StudentAllRoomPageState extends State<StudentAllRoomPage>
 //     print('Failed to load rooms');
 //   }
 // }
+
+  // ตัวอย่างข้อมูลห้อง
 
   final List<Map<String, dynamic>> rooms = [
     {'name': 'Room 1', 'status': 'Reserved', 'image': 'assets/Room1.png', 'capacity': 8},
@@ -117,7 +119,7 @@ class _StudentAllRoomPageState extends State<StudentAllRoomPage>
     }
   }
 
-  IconData getStatusIcon(String status) {
+  IconData getStatusIcon(String status) { //Iconแสดงสถานะ
     switch (status) {
       case 'Free':
         return Icons.check_circle;
@@ -138,11 +140,11 @@ class _StudentAllRoomPageState extends State<StudentAllRoomPage>
 
     if (index == 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Booking History 📜')),
+        const SnackBar(content: Text('Go to Booking History 📜')), //กดบาร์historyจะไปหน้าhistory
       );
     } else if (index == 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Settings ⚙️')),
+        const SnackBar(content: Text('Go to Settings ⚙️')), //กดบาร์Settingจะไปหน้าSetting
       );
     }
   }

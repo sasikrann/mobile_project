@@ -90,23 +90,23 @@ class _LecturerHomePageState extends State<LecturerHomePage>
 
     if (index == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Home 🏠')),
+        const SnackBar(content: Text('Go to Home 🏠')), //ไปหน้าhome
       );
     } else if (index == 1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Viewing All Rooms 🏢')),
+        const SnackBar(content: Text('Viewing All Rooms 🏢')),//ไปหน้าall room
       );
     } else if (index == 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Notifications 🔔')),
+        const SnackBar(content: Text('Go to Notifications 🔔')), //ไปหน้าNotifications
       );
     } else if (index == 3) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Schedule ⏰')),
+        const SnackBar(content: Text('Go to Schedule ⏰')),//ไปหน้าSchedule
       );
     } else if (index == 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Go to Settings ⚙️')),
+        const SnackBar(content: Text('Go to Settings ⚙️')),//ไปหน้าSetting
       );
     }
   }
