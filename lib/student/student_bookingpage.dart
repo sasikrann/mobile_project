@@ -1,67 +1,6 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const RoomBookingApp());
-}
-
-class RoomBookingApp extends StatelessWidget {
-  const RoomBookingApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Room Booking',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: false,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF8EBDD), // สีพื้นหลังครีม
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFD61F26), // แดงหัวแถบ
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          elevation: 0,
-          titleTextStyle: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      home: const BookRoomPage(),
-    );
-  }
-}
-
-class _IconPillButton extends StatelessWidget {
-  const _IconPillButton({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Center(
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 200),
-          scale: active ? 1.1 : 0.95,
-          curve: Curves.easeOutCubic,
-          child: Icon(
-            icon,
-            size: 24,
-            color: active ? const Color(0xFFDD0303) : Colors.white.withOpacity(0.7),
-          ),
-        ),
-      ),
-    );
-  }
-}
+import 'student_homepage.dart'; 
+import 'student_historypage.dart';
 
 class BookRoomPage extends StatefulWidget {
   const BookRoomPage({super.key});
@@ -88,11 +27,26 @@ class _BookRoomPageState extends State<BookRoomPage> {
         "${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}";
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFEF3E2), // ✅ พื้นหลังครีม
       appBar: AppBar(
-        title: const Text('Book a Room'),
+        backgroundColor: const Color(0xFFFEF3E2), // ✅ bar ครีม
+        centerTitle: true, // ✅ ชื่ออยู่ตรงกลาง
+        elevation: 0,
+        title: const Text(
+          'Book a Room',
+          style: TextStyle(
+            color: Color(0xFFD61F26), // ✅ สีแดง
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {},
+          icon: const Icon(Icons.arrow_back, color: Colors.black), // ✅ สีดำ
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentHomePage()),
+            );
+          },
         ),
       ),
       body: Center(
@@ -115,8 +69,7 @@ class _BookRoomPageState extends State<BookRoomPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text("Date",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text("Date", style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 6),
               TextField(
                 readOnly: true,
@@ -149,8 +102,7 @@ class _BookRoomPageState extends State<BookRoomPage> {
                 }).toList(),
               ),
               const SizedBox(height: 12),
-              const Text("Purpose of booking",
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text("Purpose of booking", style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 6),
               TextField(
                 controller: purposeController,
@@ -171,8 +123,7 @@ class _BookRoomPageState extends State<BookRoomPage> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD61F26),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -199,15 +150,22 @@ class _BookRoomPageState extends State<BookRoomPage> {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD9D9D9),
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () {},
-                    child: const Text("Cancel",
-                        style: TextStyle(color: Colors.black, fontSize: 16)),
+                    onPressed: () {
+                      // ✅ กลับไปหน้า homepage
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const StudentHomePage()),
+                      );
+                    },
+                    child: const Text(
+                      "Cancel",
+                      style: TextStyle(color: Colors.black, fontSize: 16),
+                    ),
                   ),
                 ],
               ),
@@ -234,10 +192,20 @@ class ConfirmBookingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFEF3E2), // ✅ พื้นหลังครีม
       appBar: AppBar(
-        title: const Text('Book a Room'),
+        backgroundColor: const Color(0xFFFEF3E2),
+        centerTitle: true,
+        elevation: 0,
+        title: const Text(
+          'Book a Room',
+          style: TextStyle(
+            color: Color(0xFFD61F26), // ✅ สีแดง
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -252,13 +220,11 @@ class ConfirmBookingPage extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle,
-                  color: Color(0xFF3BAF5D), size: 80),
+              const Icon(Icons.check_circle, color: Color(0xFF3BAF5D), size: 80),
               const SizedBox(height: 12),
               const Text(
                 "Confirm Booking",
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               buildInfoRow("Date", date),
@@ -268,17 +234,22 @@ class ConfirmBookingPage extends StatelessWidget {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFD61F26),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 50, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
                   ),
                 ),
                 onPressed: () {
-                  Navigator.pop(context);
+                  // ✅ กลับไปหน้า homepage เมื่อจองเสร็จ
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BookRoomPage()),
+                  );
                 },
-                child: const Text("Go to My Booking",
-                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                child: const Text(
+                  "Go to My Booking",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ],
           ),
@@ -294,20 +265,10 @@ class ConfirmBookingPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text("$label: ",
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
           Text(value, style: const TextStyle(fontSize: 16)),
         ],
       ),
     );
-  }
-}
-class BookingPage extends StatelessWidget {
-  const BookingPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // เรียกไปหน้า BookRoomPage 
-    return const BookRoomPage();
   }
 }

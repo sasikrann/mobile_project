@@ -11,7 +11,7 @@ class StudentShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return const StudentBar(
       home: StudentHomePage(),
-      history: StudentHistoryPage(),
+      history: RoomBookingApp(),
       profile: StudentProfilePage(),
     );
   }

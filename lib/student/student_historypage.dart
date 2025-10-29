@@ -32,37 +32,6 @@ class RoomBookingApp extends StatelessWidget {
   }
 }
 
-class _IconPillButton extends StatelessWidget {
-  const _IconPillButton({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-  });
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Center(
-        child: AnimatedScale(
-          duration: const Duration(milliseconds: 200),
-          scale: active ? 1.1 : 0.95,
-          curve: Curves.easeOutCubic,
-          child: Icon(
-            icon,
-            size: 24,
-            color: active ? const Color(0xFFDD0303) : Colors.white.withOpacity(0.7),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class BookRoomPage extends StatefulWidget {
   const BookRoomPage({super.key});
 

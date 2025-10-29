@@ -41,7 +41,7 @@ class _StudentHomePageState extends State<StudentHomePage>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const BookingPage(),
+          builder: (context) => const BookRoomPage(),
         ),
       );
     } else {
