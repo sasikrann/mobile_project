@@ -10,8 +10,8 @@ CREATE TABLE users (
 );
 
 INSERT INTO users (name, username, password, role) VALUES
-('Jason','student', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'student'),
-('John','student', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'student'),
+('Jason','student1', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'student'),
+('John','student2', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'student'),
 ('Harry','staff', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'staff'),
 ('Peter','lecturer', '$2a$12$xEz3r391X.cKQJRBnmGxhewPevvlGBrBYcLDF0F9xGyn8pTvrDtkq', 'lecturer');
 
