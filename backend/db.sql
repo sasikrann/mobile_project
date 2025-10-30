@@ -20,11 +20,11 @@ CREATE TABLE rooms (
   name VARCHAR(100) NOT NULL,
   description VARCHAR(255),
   capacity INT DEFAULT 4 NOT NULL,
-  status ENUM('open', 'closed') DEFAULT 'open'
-  image VARBINARY(MAX) DEFAULT NULL,
+  status ENUM('open', 'closed') DEFAULT 'open',
+  image BLOB DEFAULT NULL
 );
 
-INSERT INTO rooms (name, description, capacity) VALUES
+INSERT INTO rooms (name, description, capacity) VALUES 
 ('Room 1', 'Room for entertainment', 6),
 ('Room 2', 'This is room', 8),
 ('Room 3', 'Room for mobile app', 3),
