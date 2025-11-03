@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'student_shell.dart';
 
 /// ===============================
 /// BookRoomPage (date is String)
 /// ===============================
 class MyBookingsPage extends StatefulWidget {
-  const MyBookingsPage({super.key});
+  const MyBookingsPage({
+    super.key,
+    required this.roomId,
+    required this.roomName,
+    required this.authToken,
+    this.apiBase = 'http://192.168.1.132:3000', // เปลี่ยนเป็น IP เครื่อง dev เมื่อรันบน device
+  });
+
+  final int roomId;
+  final String roomName;
+  final String authToken;
+  final String apiBase;
 
   @override
   State<MyBookingsPage> createState() => _MyBookingsPageState();
@@ -14,17 +28,34 @@ class MyBookingsPage extends StatefulWidget {
 class _MyBookingsPageState extends State<MyBookingsPage>
     with TickerProviderStateMixin {
   String? selectedTime; // label "HH:MM - HH:MM"
-  String fixedDate = "30/10/2025"; // 🔒 ใช้ String ล็อกวัน
+  late final String fixedDate; //
   final TextEditingController purposeController = TextEditingController();
   late AnimationController _animController;
+
+  bool _loading = true;
+  String? _loadError;
+
+  // สถานะจาก backend จะแปลงมาเป็น list นี้เพื่อคุม UI
+  List<_Slot> _slots = <_Slot>[];
 
   @override
   void initState() {
     super.initState();
+    fixedDate = _formatToday();
     _animController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..forward();
+
+    _fetchRoomStatus();
+  }
+
+  String _formatToday() {
+    final now = DateTime.now(); // เวลา local
+    final dd = now.day.toString().padLeft(2, '0');
+    final mm = now.month.toString().padLeft(2, '0');
+    final yyyy = now.year.toString();
+    return '$dd/$mm/$yyyy';
   }
 
   @override
@@ -34,21 +65,180 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     super.dispose();
   }
 
-  // ====== Timeslots with status ======
-  // สถานะ:
-  // - free: กดเลือกได้ (เดิม)
-  // - reserved: มีคนอื่นจองและ "อนุมัติแล้ว" (เหลือง)
-  // - pendingOther: คนอื่นจอง "รออนุมัติ" (Pending สีเหลือง)
-  // - pendingMe: เราจองแล้ว "รออนุมัติ" (Pending สีม่วง/คราม แยกจากคนอื่น)
-  final List<_Slot> _slots = <_Slot>[
-    _Slot(start: '08:00', end: '10:00', status: SlotStatus.reserved),
-    _Slot(start: '10:00', end: '12:00', status: SlotStatus.pendingOther),
-    _Slot(start: '13:00', end: '15:00', status: SlotStatus.free),
-    _Slot(start: '15:00', end: '17:00', status: SlotStatus.free),
-  ];
+  /// ===== API: GET /api/rooms/:id/status =====
+  Future<void> _fetchRoomStatus() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+
+    try {
+      final res = await http.get(
+        Uri.parse('${widget.apiBase}/api/rooms/${widget.roomId}/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.authToken}',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final List<dynamic> slotsJson = (data['slots'] ?? []) as List<dynamic>;
+
+        // backend ส่ง time_slot เป็น: 8-10 / 10-12 / 13-15 / 15-17
+        // status เป็น: Free / Reserved / Waiting / MyPending
+        final mapped = slotsJson.map<_Slot>((s) {
+          final ts = (s['time_slot'] ?? '').toString();
+          final st = (s['status'] ?? '').toString();
+          return _Slot(
+            start: _slotToLabel(ts).split(' - ')[0],
+            end: _slotToLabel(ts).split(' - ')[1],
+            status: _mapBackendStatus(st),
+          );
+        }).toList();
+
+        // ให้แน่ใจว่ามีครบ 4 ช่องเสมอ (ถ้า backend ส่งไม่ครบ)
+        final labels = const [
+          '08:00 - 10:00',
+          '10:00 - 12:00',
+          '13:00 - 15:00',
+          '15:00 - 17:00'
+        ];
+        final Map<String, _Slot> byLabel = {
+          for (final s in mapped) s.label: s
+        };
+        final complete = labels.map((label) {
+          return byLabel[label] ??
+              _slotFromLabel(label, SlotStatus.free); // ช่องที่ไม่มา = Free
+        }).toList();
+
+        setState(() {
+          _slots = complete;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _loading = false;
+          _loadError = 'Failed to load status (${res.statusCode})';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _loadError = 'Cannot connect to server';
+      });
+    }
+  }
+
+  /// ===== API: POST /api/bookings =====
+  Future<bool> _createBooking() async {
+    if (selectedTime == null) return false;
+
+    final slotCode = _labelToSlot(selectedTime!); // "8-10" | "10-12" ...
+    final body = {
+      'room_id': widget.roomId,
+      'time_slot': slotCode,
+      'reason': purposeController.text.isEmpty ? null : purposeController.text,
+    };
+
+    try {
+      final res = await http.post(
+        Uri.parse('${widget.apiBase}/api/bookings'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.authToken}',
+        },
+        body: json.encode(body),
+      );
+
+      if (res.statusCode == 201) {
+        return true;
+      } else {
+        final msg = _safeMsg(res.body) ?? 'Booking failed (${res.statusCode})';
+        _toast(msg);
+        return false;
+      }
+    } catch (e) {
+      _toast('Cannot connect to server');
+      return false;
+    }
+  }
+
+  String? _safeMsg(String raw) {
+    try {
+      final m = json.decode(raw);
+      return m['message']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
 
   // helper: ค้นหาจาก label
-  int _indexOfLabel(String label) => _slots.indexWhere((s) => s.label == label);
+  int _indexOfLabel(String label) =>
+      _slots.indexWhere((s) => s.label == label);
+
+  // ====== Mapping helpers ======
+  // UI label  -> backend code
+  String _labelToSlot(String label) {
+    switch (label) {
+      case '08:00 - 10:00':
+        return '8-10';
+      case '10:00 - 12:00':
+        return '10-12';
+      case '13:00 - 15:00':
+        return '13-15';
+      case '15:00 - 17:00':
+        return '15-17';
+      default:
+        return '8-10';
+    }
+  }
+
+  // backend code -> UI label
+  String _slotToLabel(String code) {
+    switch (code) {
+      case '8-10':
+        return '08:00 - 10:00';
+      case '10-12':
+        return '10:00 - 12:00';
+      case '13-15':
+        return '13:00 - 15:00';
+      case '15-17':
+        return '15:00 - 17:00';
+      default:
+        return '08:00 - 10:00';
+    }
+  }
+
+  // backend status -> UI SlotStatus
+  SlotStatus _mapBackendStatus(String s) {
+    switch (s) {
+      case 'Reserved':
+        return SlotStatus.reserved;
+      case 'On Hold':
+        return SlotStatus.pendingOther;
+      case 'Pending':
+        return SlotStatus.pendingMe;
+      case 'Free':
+      default:
+        return SlotStatus.free;
+    }
+  }
+
+  _Slot _slotFromLabel(String label, SlotStatus status) {
+    final parts = label.split(' - ');
+    return _Slot(start: parts[0], end: parts[1], status: status);
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.grey.shade800,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,11 +314,11 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                           },
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Book a Room',
+                          'Book a Room • ${widget.roomName}',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color(0xFFD61F26),
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -136,7 +326,13 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 44),
+                      // refresh button
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded),
+                        color: const Color(0xFFD61F26),
+                        onPressed: _fetchRoomStatus,
+                        tooltip: 'Refresh slots',
+                      ),
                     ],
                   ),
                 ),
@@ -144,372 +340,374 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
               // ===== Main =====
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  physics: const BouncingScrollPhysics(),
-                  child: FadeTransition(
-                    opacity: _animController,
-                    child: Container(
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: const Color(0xFFD61F26).withOpacity(0.2),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFD61F26).withOpacity(0.15),
-                            blurRadius: 28,
-                            offset: const Offset(0, 10),
-                            spreadRadius: -4,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          const Row(
-                            children: [
-                              Icon(
-                                Icons.meeting_room_rounded,
-                                color: Color(0xFFD61F26),
-                                size: 32,
-                              ),
-                              SizedBox(width: 10),
-                              Text(
-                                "Room 3",
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1A1A2E),
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 28),
-
-                          // Date (String, not selectable)
-                          const Text(
-                            "Date",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Color(0xFF1A1A2E),
-                              letterSpacing: 0.3,
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _loadError != null
+                        ? Center(
+                            child: Text(
+                              _loadError!,
+                              style: const TextStyle(
+                                  color: Colors.red, fontWeight: FontWeight.w600),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFBF5),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE5D5C3),
-                                width: 2,
-                              ),
-                            ),
-                            child: Row(
-                              children: const [
-                                _CalIcon(),
-                                SizedBox(width: 14),
-                                Expanded(
-                                  child: Text(
-                                    "30/10/2025",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF1A1A2E),
-                                    ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            physics: const BouncingScrollPhysics(),
+                            child: FadeTransition(
+                              opacity: _animController,
+                              child: Container(
+                                padding: const EdgeInsets.all(28),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(
+                                    color: const Color(0xFFD61F26).withOpacity(0.2),
+                                    width: 2,
                                   ),
-                                ),
-                                Icon(
-                                  Icons.lock_rounded,
-                                  size: 18,
-                                  color: Color(0xFF8B6F47),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Time Slot
-                          const Text(
-                            "Available Time Slots",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Color(0xFF1A1A2E),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          ..._slots.map((slot) {
-                            final isSelected = selectedTime == slot.label;
-                            final palette = _paletteFor(
-                              slot.status,
-                              isSelected,
-                            );
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
-                                onTap: (slot.status == SlotStatus.free)
-                                    ? () => setState(
-                                        () => selectedTime = slot.label,
-                                      )
-                                    : null, // ❌ ช่องที่ไม่ว่างกดไม่ได้
-                                borderRadius: BorderRadius.circular(16),
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: palette.tileBg,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: palette.border,
-                                      width: 2,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFD61F26).withOpacity(0.15),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 10),
+                                      spreadRadius: -4,
                                     ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: palette.primary
-                                                  .withOpacity(0.2),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Title
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.meeting_room_rounded,
+                                          color: Color(0xFFD61F26),
+                                          size: 32,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          widget.roomName,
+                                          style: const TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF1A1A2E),
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 28),
+
+                                    // Date (String, not selectable) — คง UI เดิม
+                                    const Text(
+                                      "Date",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: Color(0xFF1A1A2E),
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFFBF5),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: const Color(0xFFE5D5C3),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const _CalIcon(),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Text(
+                                              fixedDate,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF1A1A2E),
+                                              ),
                                             ),
-                                          ]
-                                        : [],
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: palette.iconBg,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
                                           ),
-                                          border: Border.all(
-                                            color: palette.iconBorder,
-                                            width: 1.5,
+                                          const Icon(
+                                            Icons.lock_rounded,
+                                            size: 18,
+                                            color: Color(0xFF8B6F47),
                                           ),
-                                        ),
-                                        child: Icon(
-                                          Icons.access_time_rounded,
-                                          size: 20,
-                                          color: palette.iconFg,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Text(
-                                          slot.label,
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: palette.text,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Badge ขวาแสดงสถานะ
-                                      _StatusBadge(
-                                        status: slot.status,
-                                        isSelected: isSelected,
-                                      ),
-
-                                      if (isSelected)
-                                        const Padding(
-                                          padding: EdgeInsets.only(left: 10),
-                                          child: Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Color(0xFFD61F26),
-                                            size: 22,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-
-                          const SizedBox(height: 24),
-
-                          // Purpose
-                          const Text(
-                            "Purpose of Booking (Optional)",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Color(0xFF1A1A2E),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: purposeController,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              hintText: 'Enter the purpose of your booking...',
-                              hintStyle: TextStyle(
-                                color: const Color(0xFF8B6F47).withOpacity(0.5),
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFFFFFBF5),
-                              contentPadding: const EdgeInsets.all(16),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFE5D5C3),
-                                  width: 2,
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFFE5D5C3),
-                                  width: 2,
-                                ),
-                              ),
-                              focusedBorder: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(16),
-                                ),
-                                borderSide: BorderSide(
-                                  color: Color(0xFFD61F26),
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-
-                          // Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF5F5F5),
-                                    foregroundColor: const Color(0xFF1A1A2E),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                      side: const BorderSide(
-                                        color: Color(0xFFE5D5C3),
-                                        width: 2,
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                  onPressed: () {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const StudentShell(),
-                                      ),
-                                    );
-                                  },
-                                  child: const Text(
-                                    "Cancel",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: selectedTime == null
-                                        ? const Color(0xFFE5D5C3)
-                                        : const Color(0xFFD61F26),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    shadowColor: const Color(
-                                      0xFFD61F26,
-                                    ).withOpacity(0.3),
-                                  ),
-                                  onPressed: selectedTime == null
-                                      ? null
-                                      : () {
-                                          // อัปเดตสถานะ slot ที่เราเลือกให้เป็น PendingMe
-                                          final i = _indexOfLabel(
-                                            selectedTime!,
-                                          );
-                                          if (i != -1) {
-                                            setState(() {
-                                              _slots[i] = _slots[i].copyWith(
-                                                status: SlotStatus.pendingMe,
-                                              );
-                                            });
-                                          }
+                                    const SizedBox(height: 24),
 
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  ConfirmBookingPage(
-                                                    date: fixedDate,
-                                                    time: selectedTime!,
-                                                    purpose:
-                                                        purposeController
-                                                            .text
-                                                            .isEmpty
-                                                        ? '-'
-                                                        : purposeController
-                                                              .text,
+                                    // Time Slot
+                                    const Text(
+                                      "Available Time Slots",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: Color(0xFF1A1A2E),
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    ..._slots.map((slot) {
+                                      final isSelected = selectedTime == slot.label;
+                                      final palette = _paletteFor(
+                                        slot.status,
+                                        isSelected,
+                                      );
+
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 12),
+                                        child: InkWell(
+                                          onTap: (slot.status == SlotStatus.free)
+                                              ? () => setState(() => selectedTime = slot.label)
+                                              : null, // ❌ ช่องที่ไม่ว่างกดไม่ได้
+                                          borderRadius: BorderRadius.circular(16),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: palette.tileBg,
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: palette.border,
+                                                width: 2,
+                                              ),
+                                              boxShadow: isSelected
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: palette.primary.withOpacity(0.2),
+                                                        blurRadius: 12,
+                                                        offset: const Offset(0, 4),
+                                                      ),
+                                                    ]
+                                                  : [],
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(10),
+                                                  decoration: BoxDecoration(
+                                                    color: palette.iconBg,
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: palette.iconBorder,
+                                                      width: 1.5,
+                                                    ),
                                                   ),
+                                                  child: Icon(
+                                                    Icons.access_time_rounded,
+                                                    size: 20,
+                                                    color: palette.iconFg,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 14),
+                                                Expanded(
+                                                  child: Text(
+                                                    slot.label,
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: palette.text,
+                                                    ),
+                                                  ),
+                                                ),
+
+                                                // Badge ขวาแสดงสถานะ
+                                                _StatusBadge(
+                                                  status: slot.status,
+                                                  isSelected: isSelected,
+                                                ),
+
+                                                if (isSelected)
+                                                  const Padding(
+                                                    padding: EdgeInsets.only(left: 10),
+                                                    child: Icon(
+                                                      Icons.check_circle_rounded,
+                                                      color: Color(0xFFD61F26),
+                                                      size: 22,
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
-                                          );
-                                        },
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Text(
-                                        "Confirm",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+
+                                    const SizedBox(height: 24),
+
+                                    // Purpose
+                                    const Text(
+                                      "Purpose of Booking (Optional)",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: Color(0xFF1A1A2E),
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    TextField(
+                                      controller: purposeController,
+                                      maxLines: 3,
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            'Enter the purpose of your booking...',
+                                        hintStyle: TextStyle(
+                                          color: const Color(0xFF8B6F47).withOpacity(0.5),
+                                        ),
+                                        filled: true,
+                                        fillColor: const Color(0xFFFFFBF5),
+                                        contentPadding: const EdgeInsets.all(16),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5D5C3),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFFE5D5C3),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        focusedBorder: const OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                            Radius.circular(16),
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: Color(0xFFD61F26),
+                                            width: 2,
+                                          ),
                                         ),
                                       ),
-                                      SizedBox(width: 8),
-                                      Icon(
-                                        Icons.arrow_forward_rounded,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                    const SizedBox(height: 32),
+
+                                    // Buttons
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFF5F5F5),
+                                              foregroundColor: const Color(0xFF1A1A2E),
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                              ),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                                side: const BorderSide(
+                                                  color: Color(0xFFE5D5C3),
+                                                  width: 2,
+                                                ),
+                                              ),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.pushReplacement(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) => const StudentShell(),
+                                                ),
+                                              );
+                                            },
+                                            child: const Text(
+                                              "Cancel",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: selectedTime == null
+                                                  ? const Color(0xFFE5D5C3)
+                                                  : const Color(0xFFD61F26),
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                              ),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                              shadowColor: const Color(0xFFD61F26).withOpacity(0.3),
+                                            ),
+                                            onPressed: selectedTime == null
+                                                ? null
+                                                : () async {
+                                                    // ยิงจองจริง
+                                                    final ok = await _createBooking();
+                                                    if (!ok) return;
+
+                                                    // อัปเดตสถานะให้เหมือน MyPending ใน UI ทันที
+                                                    final i = _indexOfLabel(selectedTime!);
+                                                    if (i != -1) {
+                                                      setState(() {
+                                                        _slots[i] = _slots[i].copyWith(
+                                                          status: SlotStatus.pendingMe,
+                                                        );
+                                                      });
+                                                    }
+
+                                                    if (!mounted) return;
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => ConfirmBookingPage(
+                                                          date: fixedDate,
+                                                          time: selectedTime!,
+                                                          purpose: purposeController.text.isEmpty
+                                                              ? '-'
+                                                              : purposeController.text,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: const [
+                                                Text(
+                                                  "Confirm",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Icon(
+                                                  Icons.arrow_forward_rounded,
+                                                  size: 20,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ),
             ],
           ),
@@ -650,9 +848,7 @@ class ConfirmBookingPage extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(
-                                    0xFF10B981,
-                                  ).withOpacity(0.3),
+                                  color: const Color(0xFF10B981).withOpacity(0.3),
                                   blurRadius: 20,
                                   offset: const Offset(0, 6),
                                 ),
@@ -718,16 +914,13 @@ class ConfirmBookingPage extends StatelessWidget {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF10B981),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 18,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 18),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
-                                shadowColor: const Color(
-                                  0xFF10B981,
-                                ).withOpacity(0.3),
+                                shadowColor:
+                                    const Color(0xFF10B981).withOpacity(0.3),
                               ),
                               onPressed: () {
                                 Navigator.pushReplacement(
@@ -868,10 +1061,10 @@ class _Slot {
   String get label => '$start - $end';
 
   _Slot copyWith({String? start, String? end, SlotStatus? status}) => _Slot(
-    start: start ?? this.start,
-    end: end ?? this.end,
-    status: status ?? this.status,
-  );
+        start: start ?? this.start,
+        end: end ?? this.end,
+        status: status ?? this.status,
+      );
 }
 
 /// สี/สไตล์ตามสถานะ (และกรณีถูกเลือก)
@@ -903,9 +1096,8 @@ _TilePalette _paletteFor(SlotStatus s, bool isSelected) {
         border: isSelected ? const Color(0xFFD61F26) : const Color(0xFFE5D5C3),
         text: isSelected ? const Color(0xFFD61F26) : const Color(0xFF1A1A2E),
         iconBg: isSelected ? const Color(0xFFD61F26) : const Color(0xFFE0E4F7),
-        iconBorder: isSelected
-            ? const Color(0xFFD61F26)
-            : const Color(0xFF5D6CC4).withOpacity(0.3),
+        iconBorder:
+            isSelected ? const Color(0xFFD61F26) : const Color(0xFF5D6CC4).withOpacity(0.3),
         iconFg: isSelected ? Colors.white : const Color(0xFF5D6CC4),
         primary: const Color(0xFFD61F26),
       );
@@ -921,16 +1113,15 @@ _TilePalette _paletteFor(SlotStatus s, bool isSelected) {
       );
     case SlotStatus.pendingOther:
       return const _TilePalette(
-        tileBg: Color(0xFFE0F2FE), // พื้นหลังน้ำเงินอ่อน
-        border: Color(0xFF0284C7), // เส้นขอบน้ำเงินกลาง
-        text: Color(0xFF075985), // ตัวหนังสือน้ำเงินเข้ม
-        iconBg: Color(0xFFBAE6FD), // พื้นหลังไอคอนน้ำเงินจาง
-        iconBorder: Color(0xFF0284C7), // ขอบไอคอนน้ำเงิน
-        iconFg: Color(0xFF0284C7), // ไอคอนน้ำเงิน
-        primary: Color(0xFF0284C7), // สีหลักของสถานะ
+        tileBg: Color(0xFFE0F2FE), // น้ำเงินอ่อน
+        border: Color(0xFF0284C7),
+        text: Color(0xFF075985),
+        iconBg: Color(0xFFBAE6FD),
+        iconBorder: Color(0xFF0284C7),
+        iconFg: Color(0xFF0284C7),
+        primary: Color(0xFF0284C7),
       );
-
-    case SlotStatus.pendingMe: // รออนุมัติ (เรา) = สีคนละโทน (ม่วง/คราม)
+    case SlotStatus.pendingMe: // เราจองรออนุมัติ
       return const _TilePalette(
         tileBg: Color(0xFFEDE9FE),
         border: Color(0xFF7C3AED),
@@ -968,14 +1159,13 @@ class _StatusBadge extends StatelessWidget {
         bd = const Color(0xFFF59E0B);
         break;
       case SlotStatus.pendingOther:
-        text = 'Pending';
+        text = 'On Hold';
         fg = const Color(0xFF0284C7);
         bg = const Color(0xFFE0F2FE);
         bd = const Color(0xFF0284C7);
         break;
-
       case SlotStatus.pendingMe:
-        text = 'Pending (You)';
+        text = 'Pending';
         fg = const Color(0xFF7C3AED);
         bg = const Color(0xFFEDE9FE);
         bd = const Color(0xFF7C3AED);

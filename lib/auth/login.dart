@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/auth_storage.dart';
 import './register.dart';
 import '../staff/staff_shell.dart';
 import '../student/student_shell.dart';
@@ -49,7 +50,18 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        final role = data['user']['role'];
+        final token = data['token'] as String;
+        final user = data['user'] as Map<String, dynamic>;
+        final role = user['role'] as String;
+
+        await AuthStorage.saveLogin(
+          token: token,
+          userId: user['id'] as int,
+          role: role,
+          username: user['username'] as String,
+          name: user['name']?.toString() ?? '',
+        );
+
         if (!mounted) return;
 
         if (role == 'student') {

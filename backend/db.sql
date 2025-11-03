@@ -40,7 +40,8 @@ CREATE TABLE bookings (
   booking_date DATE NOT NULL,                  
   time_slot ENUM('8-10','10-12','13-15','15-17') NOT NULL,
   reason VARCHAR(255),
-  status ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
+  status ENUM('Pending','Approved','Rejected', "Cancelled") DEFAULT 'Pending',
+  reject_reason VARCHAR(255) DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
@@ -50,3 +51,6 @@ CREATE TABLE bookings (
 INSERT INTO bookings (
   user_id, room_id, approver_id, booking_date, time_slot, reason, status) VALUES
 (1, 1, NULL, CURDATE(), '8-10', 'Group study for final', 'Pending');
+
+INSERT INTO bookings (user_id, room_id, approver_id, booking_date, time_slot, reason, status, reject_reason)
+VALUES (1, 3, 3, CURDATE(), '10-12', 'Presentation practice', 'Rejected', 'Room maintenance');

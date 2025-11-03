@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../services/auth_storage.dart';
 
-import 'student_bookingpage.dart'; // ต้องมี BookRoomPage
+import 'student_bookingpage.dart'; // ควรมี BookRoomPage(roomId, roomName)
 
 class StudentHomePage extends StatefulWidget {
   const StudentHomePage({super.key});
@@ -12,13 +15,22 @@ class StudentHomePage extends StatefulWidget {
 
 class _StudentHomePageState extends State<StudentHomePage>
     with TickerProviderStateMixin {
+
+  static const String API_BASE = 'http://localhost:3000';
+
+  String? _authToken;
+
   late AnimationController _fadeController;
   late AnimationController _staggerController;
   late AnimationController _floatingController;
 
+  List<dynamic> _rooms = [];
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
+
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -33,6 +45,10 @@ class _StudentHomePageState extends State<StudentHomePage>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
+
+    _loadAuth().then((_) {
+      _fetchRooms();
+    });
   }
 
   @override
@@ -43,72 +59,164 @@ class _StudentHomePageState extends State<StudentHomePage>
     super.dispose();
   }
 
-  // ========= DATA =========
-  final List<Map<String, dynamic>> rooms = [
-    {'name': 'Room 1', 'status': 'Reserved', 'image': 'assets/Room1.png', 'capacity': 8},
-    {'name': 'Room 2', 'status': 'Disabled', 'image': 'assets/Room2.jpg', 'capacity': 12},
-    {'name': 'Room 3', 'status': 'Free', 'image': 'assets/Room3.png', 'capacity': 8},
-    {'name': 'Room 4', 'status': 'Disabled', 'image': 'assets/Room4.jpg', 'capacity': 6},
-    {'name': 'Room 5', 'status': 'Free', 'image': 'assets/Room5.png', 'capacity': 12},
-    {'name': 'Room 6', 'status': 'Reserved', 'image': 'assets/Room6.png', 'capacity': 10},
-  ];
+  Future<void> _loadAuth() async {
+    final t = await AuthStorage.getToken();
+    setState(() {
+      _authToken = t; 
+    });
+  }
 
-  // ========= พฤติกรรม BOOK =========
-  void _tryBooking(String title, String status) {
-    if (status == 'Free') {
+  // ====== API: GET /api/rooms ======
+  Future<void> _fetchRooms() async {
+    try {
+      final headers = {'Content-Type': 'application/json'};
+      if (_authToken != null) headers['Authorization'] = 'Bearer $_authToken';
+
+      final res = await http.get(
+        Uri.parse('$API_BASE/api/rooms'),
+        headers: headers,
+      );
+
+      if (!mounted) return;
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        setState(() {
+          _rooms = (data['rooms'] ?? []) as List<dynamic>;
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+        _toast('Fetch rooms failed (${res.statusCode})');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _toast('Cannot connect to server');
+    }
+  }
+
+  // ====== BOOK BEHAVIOR ======
+  void _openOrBlock({
+    required int roomId,
+    required String roomName,
+    required String statusLabel, // "Open" | "Closed"
+  }) {
+    if (statusLabel == 'Open') {
+      if (_authToken == null || _authToken!.isEmpty) {
+        _toast("Please login again.");
+        return;
+      }
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const MyBookingsPage()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Can’t booking this room ❌"),
-          backgroundColor: Colors.grey.shade700,
-          behavior: SnackBarBehavior.floating,
+        MaterialPageRoute(
+          builder: (_) => MyBookingsPage(
+            roomId: roomId,
+            roomName: roomName,
+            authToken: _authToken!,
+            apiBase: API_BASE,
+          ),
         ),
       );
+    } else {
+      _toast("This room is closed now");
     }
   }
 
-  // ========= สี/ฉลากสถานะ =========
-  Color getStatusColor(String status) {
-    switch (status) {
-      case 'Free':
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.grey.shade800,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ====== STATUS UI (Open / Closed) ======
+  String statusLabelFromApi(String? api) =>
+      (api ?? 'closed').toLowerCase() == 'open' ? 'Open' : 'Closed';
+
+  Color statusColor(String label) {
+    switch (label) {
+      case 'Open':
         return const Color(0xFF10B981);
-      case 'Reserved':
-        return const Color(0xFFF59E0B);
-      case 'Disabled':
+      case 'Closed':
+      default:
         return const Color(0xFFEF4444);
-      default:
-        return Colors.grey;
     }
   }
 
-  Color getStatusBg(String status) {
-    switch (status) {
-      case 'Free':
+  Color statusBg(String label) {
+    switch (label) {
+      case 'Open':
         return const Color(0xFFD1FAE5);
-      case 'Reserved':
-        return const Color(0xFFFEF3C7);
-      case 'Disabled':
-        return const Color(0xFFFEE2E2);
+      case 'Closed':
       default:
-        return Colors.grey.shade200;
+        return const Color(0xFFFEE2E2);
     }
   }
 
-  IconData getStatusIcon(String status) {
-    switch (status) {
-      case 'Free':
+  IconData statusIcon(String label) {
+    switch (label) {
+      case 'Open':
         return Icons.check_circle_rounded;
-      case 'Reserved':
-        return Icons.schedule_rounded;
-      case 'Disabled':
-        return Icons.block_rounded;
+      case 'Closed':
       default:
-        return Icons.meeting_room;
+        return Icons.block_rounded;
     }
+  }
+
+  // ====== IMAGE WIDGET (BLOB base64 or asset fallback) ======
+  Widget _roomImage({
+    required dynamic imageField, // base64 string or null
+    required String assetFallback,
+    required Color tintColor,
+    required Color bgColor,
+  }) {
+    if (imageField is String && imageField.isNotEmpty) {
+      try {
+        final bytes = base64Decode(imageField);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          cacheWidth: 400,
+          cacheHeight: 400,
+          errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+        );
+      } catch (_) {
+        return _assetFallback(bgColor, tintColor);
+      }
+    }
+    // asset fallback
+    return Image.asset(
+      assetFallback,
+      fit: BoxFit.cover,
+      cacheWidth: 400,
+      cacheHeight: 400,
+      errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+    );
+  }
+
+  Widget _assetFallback(Color bg, Color tint) {
+    return Container(
+      color: bg,
+      alignment: Alignment.center,
+      child: Icon(Icons.meeting_room_rounded, size: 48, color: tint.withOpacity(0.5)),
+    );
+  }
+
+  // สุ่ม asset ตาม index (กันรูปซ้ำเดิมพัง UI)
+  String _assetForIndex(int i) {
+    const assets = [
+      'assets/Room1.png',
+      'assets/Room2.jpg',
+      'assets/Room3.png',
+      'assets/Room4.jpg',
+      'assets/Room5.png',
+      'assets/Room6.png',
+    ];
+    return assets[i % assets.length];
   }
 
   @override
@@ -117,16 +225,10 @@ class _StudentHomePageState extends State<StudentHomePage>
 
     return Scaffold(
       body: Container(
-        // ===== สไตล์พื้นหลังแบบ Lecturer =====
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFFFBF5),
-              Color(0xFFFFF5E6),
-              Color(0xFFFFE8CC),
-            ],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFBF5), Color(0xFFFFF5E6), Color(0xFFFFE8CC)],
             stops: [0.0, 0.5, 1.0],
           ),
         ),
@@ -134,37 +236,31 @@ class _StudentHomePageState extends State<StudentHomePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ===== Header (glassmorphism + floating logo) =====
+              // ===== Header =====
               FadeTransition(
                 opacity: _fadeController,
                 child: SlideTransition(
-                  position: Tween<Offset>(begin: const Offset(0, -0.2), end: Offset.zero)
-                      .animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut)),
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -0.2), end: Offset.zero,
+                  ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut)),
                   child: Container(
                     margin: const EdgeInsets.all(20.0),
                     padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withOpacity(0.9),
-                          Colors.white.withOpacity(0.7),
-                        ],
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.7)],
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFFDD0303).withOpacity(0.15),
-                          blurRadius: 24,
-                          offset: const Offset(0, 8),
-                          spreadRadius: -4,
+                          blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4,
                         ),
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
+                          blurRadius: 16, offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -179,32 +275,25 @@ class _StudentHomePageState extends State<StudentHomePage>
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(18),
                                   gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                    begin: Alignment.topLeft, end: Alignment.bottomRight,
                                     colors: [Color(0xFFDD0303), Color(0xFFFF4444)],
                                   ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFFDD0303).withOpacity(0.35),
-                                      blurRadius: 14,
-                                      offset: const Offset(0, 5),
-                                      spreadRadius: -2,
+                                      blurRadius: 14, offset: const Offset(0, 5), spreadRadius: -2,
                                     ),
                                   ],
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(18),
                                   child: Container(
-                                    width: 70,
-                                    height: 70,
-                                    padding: const EdgeInsets.all(2),
+                                    width: 70, height: 70, padding: const EdgeInsets.all(2),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(16),
                                       child: Image.asset(
-                                        'assets/logo.png',
-                                        fit: BoxFit.cover,
-                                        cacheWidth: 140,
-                                        cacheHeight: 140,
+                                        'assets/logo.png', fit: BoxFit.cover,
+                                        cacheWidth: 140, cacheHeight: 140,
                                       ),
                                     ),
                                   ),
@@ -221,11 +310,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                               Text(
                                 'All Rooms',
                                 style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1A1A2E),
-                                  letterSpacing: -0.8,
-                                  height: 1.1,
+                                  fontSize: 28, fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1A1A2E), letterSpacing: -0.8, height: 1.1,
                                 ),
                               ),
                               SizedBox(height: 4),
@@ -236,10 +322,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                                   Text(
                                     'Manage your spaces',
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      color: Color(0xFF64748B),
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.2,
+                                      fontSize: 13, color: Color(0xFF64748B),
+                                      fontWeight: FontWeight.w600, letterSpacing: 0.2,
                                     ),
                                   ),
                                 ],
@@ -255,34 +339,55 @@ class _StudentHomePageState extends State<StudentHomePage>
 
               // ===== Grid รายการห้อง =====
               Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 20,
-                    crossAxisSpacing: 20,
-                    childAspectRatio: 0.82,
-                  ),
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, safe + 100),
-                  itemCount: rooms.length,
-                  physics: const BouncingScrollPhysics(),
-                  itemBuilder: (context, index) {
-                    final room = rooms[index];
-                    final status = room['status'] as String;
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _rooms.isEmpty
+                        ? const Center(child: Text('No rooms available'))
+                        : GridView.builder(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2, mainAxisSpacing: 20, crossAxisSpacing: 20,
+                              childAspectRatio: 0.82,
+                            ),
+                            padding: EdgeInsets.fromLTRB(20, 0, 20, safe + 100),
+                            itemCount: _rooms.length,
+                            physics: const BouncingScrollPhysics(),
+                            itemBuilder: (context, index) {
+                              final room = _rooms[index];
+                              final int roomId = room['id'] as int;
+                              final String roomName = (room['name'] ?? 'Room').toString();
+                              final String apiStatus = (room['status'] ?? 'closed').toString();
+                              final String label = statusLabelFromApi(apiStatus); // "Open"/"Closed"
+                              final int capacity = (room['capacity'] ?? 0) as int;
+                              final dynamic imageField = room['image']; // base64 or null
 
-                    return _AnimatedLecturerCardForStudent(
-                      index: index,
-                      controller: _staggerController,
-                      title: room['name'] as String,
-                      status: status,
-                      capacity: room['capacity'] as int,
-                      statusColor: getStatusColor(status),
-                      statusBgColor: getStatusBg(status),
-                      statusIcon: getStatusIcon(status),
-                      imageUrl: room['image'] as String,
-                      onBookOrOpen: () => _tryBooking(room['name'] as String, status),
-                    );
-                  },
-                ),
+                              final Color sc = statusColor(label);
+                              final Color sbg = statusBg(label);
+                              final IconData sicon = statusIcon(label);
+
+                              return _AnimatedLecturerCardForStudent(
+                                index: index,
+                                controller: _staggerController,
+                                title: roomName,
+                                statusLabel: label,
+                                capacity: capacity,
+                                statusColor: sc,
+                                statusBgColor: sbg,
+                                statusIcon: sicon,
+                                // ถ้ามี base64 ใช้, ถ้าไม่มีใช้ asset เดิมตาม index
+                                imageBuilder: () => _roomImage(
+                                  imageField: imageField,
+                                  assetFallback: _assetForIndex(index),
+                                  tintColor: sc,
+                                  bgColor: sbg,
+                                ),
+                                onOpen: () => _openOrBlock(
+                                  roomId: roomId,
+                                  roomName: roomName,
+                                  statusLabel: label,
+                                ),
+                              );
+                            },
+                          ),
               ),
             ],
           ),
@@ -298,31 +403,33 @@ class _AnimatedLecturerCardForStudent extends StatefulWidget {
     required this.index,
     required this.controller,
     required this.title,
-    required this.status,
+    required this.statusLabel, // "Open"/"Closed"
     required this.capacity,
     required this.statusColor,
     required this.statusBgColor,
     required this.statusIcon,
-    required this.imageUrl,
-    required this.onBookOrOpen,
+    required this.imageBuilder, // () => Widget
+    required this.onOpen,
   });
 
   final int index;
   final AnimationController controller;
   final String title;
-  final String status;
+  final String statusLabel;
   final int capacity;
   final Color statusColor;
   final Color statusBgColor;
   final IconData statusIcon;
-  final String imageUrl;
-  final VoidCallback onBookOrOpen;
+  final Widget Function() imageBuilder;
+  final VoidCallback onOpen;
 
   @override
-  State<_AnimatedLecturerCardForStudent> createState() => _AnimatedLecturerCardForStudentState();
+  State<_AnimatedLecturerCardForStudent> createState() =>
+      _AnimatedLecturerCardForStudentState();
 }
 
-class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardForStudent> {
+class _AnimatedLecturerCardForStudentState
+    extends State<_AnimatedLecturerCardForStudent> {
   bool _isPressed = false;
 
   @override
@@ -333,12 +440,11 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
       curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
     );
 
-    final isAvailable = widget.status == 'Free';
+    final bool isOpen = widget.statusLabel == 'Open';
 
-    // สีปุ่มขวาตามสถานะ (แดงถ้า Free, เทาถ้า Reserved/Disabled)
-    final Color btnStart = isAvailable ? const Color(0xFFFF4444) : const Color(0xFF9CA3AF);
-    final Color btnEnd   = isAvailable ? const Color(0xFFDD0303) : const Color(0xFF6B7280);
-    final List<BoxShadow> btnShadow = isAvailable
+    final Color btnStart = isOpen ? const Color(0xFFFF4444) : const Color(0xFF9CA3AF);
+    final Color btnEnd   = isOpen ? const Color(0xFFDD0303) : const Color(0xFF6B7280);
+    final List<BoxShadow> btnShadow = isOpen
         ? [BoxShadow(color: const Color(0xFFDD0303).withOpacity(0.30), blurRadius: 10, offset: const Offset(0, 4))]
         : [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 3))];
 
@@ -357,7 +463,7 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
         onTapDown: (_) => setState(() => _isPressed = true),
         onTapUp: (_) {
           setState(() => _isPressed = false);
-          widget.onBookOrOpen();
+          widget.onOpen();
         },
         onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedScale(
@@ -407,23 +513,12 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              Image.asset(
-                                widget.imageUrl,
-                                fit: BoxFit.cover,
-                                cacheWidth: 400,
-                                cacheHeight: 400,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: widget.statusBgColor,
-                                  alignment: Alignment.center,
-                                  child: Icon(Icons.meeting_room_rounded,
-                                      size: 48, color: widget.statusColor.withOpacity(0.5)),
-                                ),
-                              ),
+                              // รูปจาก base64 หรือ asset
+                              widget.imageBuilder(),
                               Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
+                                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
                                     colors: [Colors.transparent, Colors.black.withOpacity(0.25)],
                                   ),
                                 ),
@@ -456,12 +551,10 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                                 Icon(widget.statusIcon, size: 14, color: widget.statusColor),
                                 const SizedBox(width: 6),
                                 Text(
-                                  widget.status,
+                                  widget.statusLabel,
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: widget.statusColor,
-                                    letterSpacing: 0.3,
+                                    fontSize: 11, fontWeight: FontWeight.w800,
+                                    color: widget.statusColor, letterSpacing: 0.3,
                                   ),
                                 ),
                               ],
@@ -473,7 +566,7 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                   ),
                 ),
 
-                // ชื่อห้อง + ความจุ + ปุ่มขวา (ไอคอนเหมือนกันหมด)
+                // ชื่อห้อง + ความจุ + ปุ่ม
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                   child: Row(
@@ -485,13 +578,10 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                           children: [
                             Text(
                               widget.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF1A1A2E),
-                                letterSpacing: -0.5,
+                                fontSize: 20, fontWeight: FontWeight.w800,
+                                color: Color(0xFF1A1A2E), letterSpacing: -0.5,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -504,8 +594,7 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                             Text(
                               'Capacity ${widget.capacity}',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 11, fontWeight: FontWeight.w600,
                                 color: const Color(0xFF64748B).withOpacity(0.7),
                                 letterSpacing: 0.2,
                               ),
@@ -515,26 +604,19 @@ class _AnimatedLecturerCardForStudentState extends State<_AnimatedLecturerCardFo
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: widget.onBookOrOpen,
+                        onTap: widget.onOpen,
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          width: 44, height: 44,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+                              begin: Alignment.topLeft, end: Alignment.bottomRight,
                               colors: [btnStart, btnEnd],
                             ),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: btnShadow,
                           ),
                           alignment: Alignment.center,
-                          // ไอคอนเดียวกันหมด
-                          child: const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                          child: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white),
                         ),
                       ),
                     ],
