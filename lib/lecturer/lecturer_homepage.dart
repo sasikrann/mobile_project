@@ -132,24 +132,24 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.9),
-                          Colors.white.withOpacity(0.7),
+                          Colors.white.withValues(alpha:0.9),
+                          Colors.white.withValues(alpha:0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha:0.5),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFDD0303).withOpacity(0.15),
+                          color: const Color(0xFFDD0303).withValues(alpha:0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                           spreadRadius: -4,
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha:0.05),
                           blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
@@ -183,7 +183,7 @@ class _LecturerHomePageState extends State<LecturerHomePage>
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: const Color(0xFFDD0303).withOpacity(0.35),
+                                            color: const Color(0xFFDD0303).withValues(alpha:0.35),
                                             blurRadius: 14,
                                             offset: const Offset(0, 5),
                                             spreadRadius: -2,
@@ -360,18 +360,18 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: widget.statusColor.withOpacity(0.2),
+                color: widget.statusColor.withValues(alpha:0.2),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.statusColor.withOpacity(_isPressed ? 0.25 : 0.18),
+                  color: widget.statusColor.withValues(alpha:_isPressed ? 0.25 : 0.18),
                   blurRadius: _isPressed ? 28 : 24,
                   offset: Offset(0, _isPressed ? 10 : 8),
                   spreadRadius: -3,
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha:0.04),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -393,7 +393,7 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.12),
+                                color: Colors.black.withValues(alpha:0.12),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -415,7 +415,7 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
                                       child: Icon(
                                         Icons.meeting_room_rounded,
                                         size: 48,
-                                        color: widget.statusColor.withOpacity(0.5),
+                                        color: widget.statusColor.withValues(alpha:0.5),
                                       ),
                                     );
                                   },
@@ -428,7 +428,7 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
                                       end: Alignment.bottomCenter,
                                       colors: [
                                         Colors.transparent,
-                                        Colors.black.withOpacity(0.25),
+                                        Colors.black.withValues(alpha:0.25),
                                       ],
                                     ),
                                   ),
@@ -459,12 +459,12 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
                               color: widget.statusBgColor,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: widget.statusColor.withOpacity(0.4),
+                                color: widget.statusColor.withValues(alpha:0.4),
                                 width: 2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: widget.statusColor.withOpacity(0.25),
+                                  color: widget.statusColor.withValues(alpha:0.25),
                                   blurRadius: 10,
                                   offset: const Offset(0, 3),
                                 ),
@@ -530,7 +530,7 @@ class _AnimatedRoomCardState extends State<_AnimatedRoomCard> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF64748B).withOpacity(0.7),
+                                    color: const Color(0xFF64748B).withValues(alpha:0.7),
                                     letterSpacing: 0.2,
                                   ),
                                 ),

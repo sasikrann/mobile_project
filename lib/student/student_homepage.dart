@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../services/auth_storage.dart';
 
+import '../services/api_client.dart';
 import 'student_bookingpage.dart'; // ควรมี BookRoomPage(roomId, roomName)
 
 class StudentHomePage extends StatefulWidget {
@@ -15,10 +14,6 @@ class StudentHomePage extends StatefulWidget {
 
 class _StudentHomePageState extends State<StudentHomePage>
     with TickerProviderStateMixin {
-
-  static const String API_BASE = 'http://localhost:3000';
-
-  String? _authToken;
 
   late AnimationController _fadeController;
   late AnimationController _staggerController;
@@ -46,9 +41,7 @@ class _StudentHomePageState extends State<StudentHomePage>
       vsync: this,
     )..repeat(reverse: true);
 
-    _loadAuth().then((_) {
-      _fetchRooms();
-    });
+    _fetchRooms();
   }
 
   @override
@@ -59,23 +52,10 @@ class _StudentHomePageState extends State<StudentHomePage>
     super.dispose();
   }
 
-  Future<void> _loadAuth() async {
-    final t = await AuthStorage.getToken();
-    setState(() {
-      _authToken = t; 
-    });
-  }
-
   // ====== API: GET /api/rooms ======
   Future<void> _fetchRooms() async {
     try {
-      final headers = {'Content-Type': 'application/json'};
-      if (_authToken != null) headers['Authorization'] = 'Bearer $_authToken';
-
-      final res = await http.get(
-        Uri.parse('$API_BASE/api/rooms'),
-        headers: headers,
-      );
+      final res = await ApiClient.get('/api/rooms');
 
       if (!mounted) return;
 
@@ -103,18 +83,12 @@ class _StudentHomePageState extends State<StudentHomePage>
     required String statusLabel, // "Open" | "Closed"
   }) {
     if (statusLabel == 'Open') {
-      if (_authToken == null || _authToken!.isEmpty) {
-        _toast("Please login again.");
-        return;
-      }
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => MyBookingsPage(
             roomId: roomId,
             roomName: roomName,
-            authToken: _authToken!,
-            apiBase: API_BASE,
           ),
         ),
       );
@@ -182,7 +156,7 @@ class _StudentHomePageState extends State<StudentHomePage>
           fit: BoxFit.cover,
           cacheWidth: 400,
           cacheHeight: 400,
-          errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+          errorBuilder: (_, _, _) => _assetFallback(bgColor, tintColor),
         );
       } catch (_) {
         return _assetFallback(bgColor, tintColor);
@@ -194,7 +168,7 @@ class _StudentHomePageState extends State<StudentHomePage>
       fit: BoxFit.cover,
       cacheWidth: 400,
       cacheHeight: 400,
-      errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+      errorBuilder: (_, _, _) => _assetFallback(bgColor, tintColor),
     );
   }
 
@@ -202,7 +176,7 @@ class _StudentHomePageState extends State<StudentHomePage>
     return Container(
       color: bg,
       alignment: Alignment.center,
-      child: Icon(Icons.meeting_room_rounded, size: 48, color: tint.withOpacity(0.5)),
+      child: Icon(Icons.meeting_room_rounded, size: 48, color: tint.withValues(alpha:0.5)),
     );
   }
 
@@ -249,17 +223,17 @@ class _StudentHomePageState extends State<StudentHomePage>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft, end: Alignment.bottomRight,
-                        colors: [Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.7)],
+                        colors: [Colors.white.withValues(alpha:0.9), Colors.white.withValues(alpha:0.7)],
                       ),
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                      border: Border.all(color: Colors.white.withValues(alpha:0.5), width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFDD0303).withOpacity(0.15),
+                          color: const Color(0xFFDD0303).withValues(alpha:0.15),
                           blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4,
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha:0.05),
                           blurRadius: 16, offset: const Offset(0, 4),
                         ),
                       ],
@@ -280,7 +254,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFDD0303).withOpacity(0.35),
+                                      color: const Color(0xFFDD0303).withValues(alpha:0.35),
                                       blurRadius: 14, offset: const Offset(0, 5), spreadRadius: -2,
                                     ),
                                   ],
@@ -445,8 +419,8 @@ class _AnimatedLecturerCardForStudentState
     final Color btnStart = isOpen ? const Color(0xFFFF4444) : const Color(0xFF9CA3AF);
     final Color btnEnd   = isOpen ? const Color(0xFFDD0303) : const Color(0xFF6B7280);
     final List<BoxShadow> btnShadow = isOpen
-        ? [BoxShadow(color: const Color(0xFFDD0303).withOpacity(0.30), blurRadius: 10, offset: const Offset(0, 4))]
-        : [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 3))];
+        ? [BoxShadow(color: const Color(0xFFDD0303).withValues(alpha:0.30), blurRadius: 10, offset: const Offset(0, 4))]
+        : [BoxShadow(color: Colors.black.withValues(alpha:0.15), blurRadius: 8, offset: const Offset(0, 3))];
 
     return AnimatedBuilder(
       animation: animation,
@@ -474,16 +448,16 @@ class _AnimatedLecturerCardForStudentState
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: widget.statusColor.withOpacity(0.2), width: 2),
+              border: Border.all(color: widget.statusColor.withValues(alpha:0.2), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: widget.statusColor.withOpacity(_isPressed ? 0.25 : 0.18),
+                  color: widget.statusColor.withValues(alpha:_isPressed ? 0.25 : 0.18),
                   blurRadius: _isPressed ? 28 : 24,
                   offset: Offset(0, _isPressed ? 10 : 8),
                   spreadRadius: -3,
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha:0.04),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -502,7 +476,7 @@ class _AnimatedLecturerCardForStudentState
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha:0.12),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -519,7 +493,7 @@ class _AnimatedLecturerCardForStudentState
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                                    colors: [Colors.transparent, Colors.black.withOpacity(0.25)],
+                                    colors: [Colors.transparent, Colors.black.withValues(alpha:0.25)],
                                   ),
                                 ),
                               ),
@@ -540,9 +514,9 @@ class _AnimatedLecturerCardForStudentState
                             decoration: BoxDecoration(
                               color: widget.statusBgColor,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: widget.statusColor.withOpacity(0.4), width: 2),
+                              border: Border.all(color: widget.statusColor.withValues(alpha:0.4), width: 2),
                               boxShadow: [
-                                BoxShadow(color: widget.statusColor.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 3)),
+                                BoxShadow(color: widget.statusColor.withValues(alpha:0.25), blurRadius: 10, offset: const Offset(0, 3)),
                               ],
                             ),
                             child: Row(
@@ -595,7 +569,7 @@ class _AnimatedLecturerCardForStudentState
                               'Capacity ${widget.capacity}',
                               style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.w600,
-                                color: const Color(0xFF64748B).withOpacity(0.7),
+                                color: const Color(0xFF64748B).withValues(alpha:0.7),
                                 letterSpacing: 0.2,
                               ),
                             ),

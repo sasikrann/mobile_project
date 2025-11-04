@@ -180,7 +180,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFDD0303).withOpacity(0.08),
+                    const Color(0xFFDD0303).withValues(alpha:0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -197,7 +197,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFE67E22).withOpacity(0.06),
+                    const Color(0xFFE67E22).withValues(alpha:0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -231,16 +231,16 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                               child: Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha:0.6),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha:0.8),
                                     width: 2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFFDD0303)
-                                          .withOpacity(0.08),
+                                          .withValues(alpha:0.08),
                                       blurRadius: 20,
                                       offset: const Offset(0, 4),
                                     ),
@@ -262,7 +262,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                                         boxShadow: [
                                           BoxShadow(
                                             color: const Color(0xFFDD0303)
-                                                .withOpacity(0.3),
+                                                .withValues(alpha:0.3),
                                             blurRadius: 8,
                                             offset: const Offset(0, 4),
                                           ),
@@ -458,15 +458,15 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: iconColor.withOpacity(0.15), width: 2),
+        border: Border.all(color: iconColor.withValues(alpha:0.15), width: 2),
         boxShadow: [
           BoxShadow(
-            color: iconColor.withOpacity(0.12),
+            color: iconColor.withValues(alpha:0.12),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha:0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -483,7 +483,7 @@ class _StatCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: iconColor.withOpacity(0.2), width: 2),
+                border: Border.all(color: iconColor.withValues(alpha:0.2), width: 2),
               ),
               child: Icon(icon, color: iconColor, size: 28),
             ),
@@ -531,7 +531,7 @@ class _AllRoomsCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+        border: Border.all(color: Colors.white.withValues(alpha:0.2), width: 2),
       ),
       child: Padding(
         padding: const EdgeInsets.all(28.0),
@@ -541,10 +541,10 @@ class _AllRoomsCard extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.25),
+                color: Colors.white.withValues(alpha:0.25),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha:0.4),
                   width: 2,
                 ),
               ),

@@ -7,7 +7,6 @@ class AuthStorage {
   static const _kUsername = 'user_name';
   static const _kName = 'name';
 
-  /// Save token + user meta
   static Future<void> saveLogin({
     required String token,
     required int userId,
@@ -23,8 +22,15 @@ class AuthStorage {
     await sp.setString(_kName, name);
   }
 
-  static Future getAll() async {
-    return;
+  static Future<Map<String, dynamic>> getAll() async {
+    final sp = await SharedPreferences.getInstance();
+    return {
+      'token': sp.getString(_kToken),
+      'id': sp.getInt(_kUserId),
+      'role': sp.getString(_kRole),
+      'username': sp.getString(_kUsername),
+      'name': sp.getString(_kName),
+    };
   }
 
   static Future<String?> getToken() async {
@@ -50,6 +56,20 @@ class AuthStorage {
       'username': sp.getString(_kUsername),
       'name': sp.getString(_kName),
     };
+  }
+
+  static Future<Map<String, String>> authHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  static Future<bool> isLoggedIn() async {
+    final token = await getToken();
+    final id = await getUserId();
+    return token != null && id != null;
   }
 
   static Future<void> clear() async {

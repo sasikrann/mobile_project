@@ -221,7 +221,7 @@ class _ProfileCardState extends State<_ProfileCard> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(_isPressed ? 0.3 : 0.2),
+                color: const Color(0xFF6366F1).withValues(alpha:_isPressed ? 0.3 : 0.2),
                 blurRadius: _isPressed ? 20 : 16,
                 offset: Offset(0, _isPressed ? 6 : 4),
               ),
@@ -272,7 +272,7 @@ class _CircleAvatarIcon extends StatelessWidget {
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha:0.2),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
       ),
@@ -289,7 +289,7 @@ class _LightArrow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha:0.2),
         borderRadius: BorderRadius.circular(10),
       ),
       child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
@@ -338,7 +338,7 @@ class _SettingMenuItemState extends State<_SettingMenuItem> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: widget.iconColor.withOpacity(_isPressed ? 0.12 : 0.06),
+                color: widget.iconColor.withValues(alpha:_isPressed ? 0.12 : 0.06),
                 blurRadius: _isPressed ? 16 : 10,
                 offset: Offset(0, _isPressed ? 6 : 3),
               ),
@@ -418,12 +418,12 @@ class _LogoutButtonState extends State<_LogoutButton> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFFDD0303).withOpacity(0.3),
+              color: const Color(0xFFDD0303).withValues(alpha:0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFDD0303).withOpacity(_isPressed ? 0.15 : 0.08),
+                color: const Color(0xFFDD0303).withValues(alpha:_isPressed ? 0.15 : 0.08),
                 blurRadius: _isPressed ? 16 : 10,
                 offset: Offset(0, _isPressed ? 6 : 3),
               ),

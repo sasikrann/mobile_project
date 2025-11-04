@@ -110,24 +110,24 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.9),
-                          Colors.white.withOpacity(0.7),
+                          Colors.white.withValues(alpha:0.9),
+                          Colors.white.withValues(alpha:0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFFE5D5C3).withOpacity(0.5),
+                        color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD4A574).withOpacity(0.15),
+                          color: const Color(0xFFD4A574).withValues(alpha:0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                           spreadRadius: -4,
                         ),
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha:0.8),
                           blurRadius: 16,
                           offset: const Offset(-4, -4),
                         ),
@@ -149,7 +149,7 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00).withOpacity(0.3),
+                                color: const Color(0xFFFF8A00).withValues(alpha:0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -352,23 +352,23 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                 end: Alignment.bottomRight,
                 colors: [
                   Colors.white,
-                  Colors.white.withOpacity(0.95),
+                  Colors.white.withValues(alpha:0.95),
                 ],
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: _statusColor.withOpacity(0.2),
+                color: _statusColor.withValues(alpha:0.2),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _statusColor.withOpacity(_isPressed ? 0.2 : 0.12),
+                  color: _statusColor.withValues(alpha:_isPressed ? 0.2 : 0.12),
                   blurRadius: _isPressed ? 24 : 20,
                   offset: Offset(0, _isPressed ? 10 : 8),
                   spreadRadius: -3,
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha:0.05),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -388,8 +388,8 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                       decoration: BoxDecoration(
                         gradient: RadialGradient(
                           colors: [
-                            _statusColor.withOpacity(0.08),
-                            _statusColor.withOpacity(0.0),
+                            _statusColor.withValues(alpha:0.08),
+                            _statusColor.withValues(alpha:0.0),
                           ],
                         ),
                       ),
@@ -423,7 +423,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                                          color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                                           blurRadius: 12,
                                           offset: const Offset(0, 4),
                                         ),
@@ -473,12 +473,12 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                 color: _statusBgColor,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: _statusColor.withOpacity(0.3),
+                                  color: _statusColor.withValues(alpha:0.3),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _statusColor.withOpacity(0.2),
+                                    color: _statusColor.withValues(alpha:0.2),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
@@ -516,7 +516,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                             color: const Color(0xFFFFFBF5),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFFE5D5C3).withOpacity(0.5),
+                              color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
                               width: 1.5,
                             ),
                           ),
@@ -539,7 +539,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                       borderRadius: BorderRadius.circular(12),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFFFF8A00).withOpacity(0.3),
+                                          color: const Color(0xFFFF8A00).withValues(alpha:0.3),
                                           blurRadius: 8,
                                           offset: const Offset(0, 3),
                                         ),
@@ -575,7 +575,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                         color: const Color(0xFFE0E4F7),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                                          color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                                           width: 1.5,
                                         ),
                                       ),
@@ -610,7 +610,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                       color: const Color(0xFFE0E4F7),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                                        color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                                         width: 1.5,
                                       ),
                                     ),
@@ -629,7 +629,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                           'BOOKED BY',
                                           style: TextStyle(
                                             fontSize: 10,
-                                            color: const Color(0xFF5D6CC4).withOpacity(0.7),
+                                            color: const Color(0xFF5D6CC4).withValues(alpha:0.7),
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: 0.8,
                                           ),
@@ -664,7 +664,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      _statusColor.withOpacity(0.3),
+                                      _statusColor.withValues(alpha:0.3),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -677,7 +677,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                 width: 6,
                                 height: 6,
                                 decoration: BoxDecoration(
-                                  color: _statusColor.withOpacity(0.5),
+                                  color: _statusColor.withValues(alpha:0.5),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -689,7 +689,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      _statusColor.withOpacity(0.3),
+                                      _statusColor.withValues(alpha:0.3),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -736,10 +736,10 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.4),
+        color: bgColor.withValues(alpha:0.4),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: iconColor.withOpacity(0.2),
+          color: iconColor.withValues(alpha:0.2),
           width: 1.5,
         ),
       ),
@@ -751,12 +751,12 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
               color: bgColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: iconColor.withOpacity(0.3),
+                color: iconColor.withValues(alpha:0.3),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: iconColor.withOpacity(0.2),
+                  color: iconColor.withValues(alpha:0.2),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -777,7 +777,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                   label.toUpperCase(),
                   style: TextStyle(
                     fontSize: 10,
-                    color: iconColor.withOpacity(0.7),
+                    color: iconColor.withValues(alpha:0.7),
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.8,
                   ),

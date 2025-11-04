@@ -106,24 +106,24 @@ class _LecturerHistoryBookingPageState
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withOpacity(0.9),
-                          Colors.white.withOpacity(0.7),
+                          Colors.white.withValues(alpha:0.9),
+                          Colors.white.withValues(alpha:0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFFE5D5C3).withOpacity(0.5),
+                        color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD4A574).withOpacity(0.15),
+                          color: const Color(0xFFD4A574).withValues(alpha:0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                           spreadRadius: -4,
                         ),
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha:0.8),
                           blurRadius: 16,
                           offset: const Offset(-4, -4),
                         ),
@@ -145,7 +145,7 @@ class _LecturerHistoryBookingPageState
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00).withOpacity(0.3),
+                                color: const Color(0xFFFF8A00).withValues(alpha:0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -279,16 +279,16 @@ class _BookingCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.white.withOpacity(0.95)],
+            colors: [Colors.white, Colors.white.withValues(alpha:0.95)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _statusColor.withOpacity(0.2),
+            color: _statusColor.withValues(alpha:0.2),
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: _statusColor.withOpacity(0.12),
+              color: _statusColor.withValues(alpha:0.12),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -336,7 +336,7 @@ class _BookingCard extends StatelessWidget {
                       color: _statusBgColor,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _statusColor.withOpacity(0.3),
+                        color: _statusColor.withValues(alpha:0.3),
                         width: 2,
                       ),
                     ),
@@ -368,7 +368,7 @@ class _BookingCard extends StatelessWidget {
                   color: const Color(0xFFFFFBF5),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFE5D5C3).withOpacity(0.5),
+                    color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
                     width: 1.5,
                   ),
                 ),
@@ -413,7 +413,7 @@ class _BookingCard extends StatelessWidget {
                               color: const Color(0xFFE0E4F7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                                color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                                 width: 1.5,
                               ),
                             ),
@@ -446,7 +446,7 @@ class _BookingCard extends StatelessWidget {
                             color: const Color(0xFFE0E4F7),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                               width: 1.5,
                             ),
                           ),

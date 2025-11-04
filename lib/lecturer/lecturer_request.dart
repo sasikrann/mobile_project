@@ -142,7 +142,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.4),
+                        color: color.withValues(alpha:0.4),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -216,7 +216,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFD61F26).withOpacity(0.3),
+                color: const Color(0xFFD61F26).withValues(alpha:0.3),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
                 spreadRadius: -4,
@@ -228,10 +228,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha:0.3),
                     width: 2,
                   ),
                 ),
@@ -263,7 +263,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           width: 4,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha:0.8),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -272,7 +272,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           '$_totalBookings ${_totalBookings == 1 ? 'Request' : 'Requests'} Pending',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha:0.9),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.2,
                           ),
@@ -321,10 +321,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: text.withOpacity(0.3), width: 2),
+        border: Border.all(color: text.withValues(alpha:0.3), width: 2),
         boxShadow: [
           BoxShadow(
-            color: text.withOpacity(0.2),
+            color: text.withValues(alpha:0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -374,20 +374,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.white.withOpacity(0.95)],
+            colors: [Colors.white, Colors.white.withValues(alpha:0.95)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: b.status == BookingStatus.pending
-                ? const Color(0xFF7C3AED).withOpacity(0.2)
+                ? const Color(0xFF7C3AED).withValues(alpha:0.2)
                 : b.status == BookingStatus.approved
-                ? const Color(0xFF10B981).withOpacity(0.2)
-                : const Color(0xFFEF4444).withOpacity(0.2),
+                ? const Color(0xFF10B981).withValues(alpha:0.2)
+                : const Color(0xFFEF4444).withValues(alpha:0.2),
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha:0.06),
               blurRadius: 20,
               offset: const Offset(0, 8),
               spreadRadius: -3,
@@ -411,7 +411,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                               : b.status == BookingStatus.approved
                               ? const Color(0xFF10B981)
                               : const Color(0xFFEF4444))
-                          .withOpacity(0.08),
+                          .withValues(alpha:0.08),
                       Colors.transparent,
                     ],
                   ),
@@ -437,7 +437,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -489,7 +489,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                       color: const Color(0xFFFFFBF5),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFE5D5C3).withOpacity(0.5),
+                        color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
                         width: 1.5,
                       ),
                     ),
@@ -504,7 +504,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00).withOpacity(0.3),
+                                color: const Color(0xFFFF8A00).withValues(alpha:0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -534,7 +534,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             color: const Color(0xFFE0E4F7),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                               width: 1.5,
                             ),
                           ),
@@ -564,13 +564,13 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF5D6CC4).withOpacity(0.08),
-                          const Color(0xFF4A5AB3).withOpacity(0.05),
+                          const Color(0xFF5D6CC4).withValues(alpha:0.08),
+                          const Color(0xFF4A5AB3).withValues(alpha:0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF5D6CC4).withOpacity(0.2),
+                        color: const Color(0xFF5D6CC4).withValues(alpha:0.2),
                         width: 1,
                       ),
                     ),
@@ -585,7 +585,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF5D6CC4).withOpacity(0.3),
+                                color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
                                 blurRadius: 8,
                               ),
                             ],
@@ -608,7 +608,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   fontWeight: FontWeight.w700,
                                   color: const Color(
                                     0xFF8B6F47,
-                                  ).withOpacity(0.7),
+                                  ).withValues(alpha:0.7),
                                   letterSpacing: 0.8,
                                 ),
                               ),
@@ -637,7 +637,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            const Color(0xFF7C3AED).withOpacity(0.3),
+                            const Color(0xFF7C3AED).withValues(alpha:0.3),
                             Colors.transparent,
                           ],
                         ),
@@ -658,7 +658,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   elevation: 0,
                                   shadowColor: const Color(
                                     0xFF10B981,
-                                  ).withOpacity(0.3),
+                                  ).withValues(alpha:0.3),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -666,11 +666,12 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     vertical: 14,
                                   ),
                                 ).copyWith(
-                                  elevation: MaterialStateProperty.resolveWith((
+                                  elevation: WidgetStateProperty.resolveWith((
                                     states,
                                   ) {
-                                    if (states.contains(MaterialState.pressed))
+                                    if (states.contains(WidgetState.pressed)) {
                                       return 0;
+                                    }
                                     return 4;
                                   }),
                                 ),
@@ -689,7 +690,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   elevation: 0,
                                   shadowColor: const Color(
                                     0xFFEF4444,
-                                  ).withOpacity(0.3),
+                                  ).withValues(alpha:0.3),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -697,11 +698,12 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     vertical: 14,
                                   ),
                                 ).copyWith(
-                                  elevation: MaterialStateProperty.resolveWith((
+                                  elevation: WidgetStateProperty.resolveWith((
                                     states,
                                   ) {
-                                    if (states.contains(MaterialState.pressed))
+                                    if (states.contains(WidgetState.pressed)) {
                                       return 0;
+                                    }
                                     return 4;
                                   }),
                                 ),
@@ -757,7 +759,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.06),
+                                  color: Colors.black.withValues(alpha:0.06),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -774,7 +776,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     border: Border.all(
                                       color: const Color(
                                         0xFFE5D5C3,
-                                      ).withOpacity(0.5),
+                                      ).withValues(alpha:0.5),
                                       width: 2,
                                     ),
                                   ),
@@ -783,7 +785,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     size: 56,
                                     color: const Color(
                                       0xFF8B6F47,
-                                    ).withOpacity(0.5),
+                                    ).withValues(alpha:0.5),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -905,7 +907,7 @@ class _RejectReasonSheetState extends State<RejectReasonSheet>
                             color: const Color(0xFFFEE2E2),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: const Color(0xFFEF4444).withOpacity(0.3),
+                              color: const Color(0xFFEF4444).withValues(alpha:0.3),
                               width: 2,
                             ),
                           ),
@@ -1039,7 +1041,7 @@ class _RejectReasonSheetState extends State<RejectReasonSheet>
                         decoration: InputDecoration(
                           hintText: 'Enter rejection reason...',
                           hintStyle: TextStyle(
-                            color: const Color(0xFF8B6F47).withOpacity(0.5),
+                            color: const Color(0xFF8B6F47).withValues(alpha:0.5),
                           ),
                           filled: true,
                           fillColor: const Color(0xFFFFFBF5),

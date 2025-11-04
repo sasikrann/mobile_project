@@ -323,7 +323,7 @@ class _RoomCard extends StatelessWidget {
                     top: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(color: color.withOpacity(0.95), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: color.withValues(alpha:0.95), borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
                           Icon(icon, color: Colors.white, size: 14),
@@ -343,7 +343,7 @@ class _RoomCard extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(room.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                Text('Capacity: ' + room.description, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+                Text('Capacity: ${room.description}', style: const TextStyle(fontSize: 13, color: Colors.black87)),
               ]),
             ),
 
@@ -374,7 +374,7 @@ class _RoomCard extends StatelessWidget {
                           child: Switch(
                             value: isOpen,
                             onChanged: (_) => onToggleOpen(),
-                            activeColor: isOpen ? Colors.green : Color(0xFFDD0303),
+                            activeThumbColor: isOpen ? Colors.green : Color(0xFFDD0303),
                           ),
                         ),
                       ),

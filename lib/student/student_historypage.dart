@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
-import '../../services/auth_storage.dart';
+import '../services/api_client.dart';
 
 /* ===== Models ===== */
 enum BookingStatus { confirmed, pending, cancelled, rejected }
@@ -57,13 +56,10 @@ class MyBookingsPage extends StatefulWidget {
 
 class _MyBookingsPageState extends State<MyBookingsPage>
     with SingleTickerProviderStateMixin {
-  // เปลี่ยนให้ตรง backend ของมึง
-  static const String API_BASE = 'http://192.168.1.132:3000';
 
   late AnimationController _animController;
 
   final List<_Booking> _bookings = <_Booking>[];
-  String? _token;
   bool _loading = true;
 
   @override
@@ -74,13 +70,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
       vsync: this,
     )..forward();
 
-    _bootstrap();
-  }
-
-  Future<void> _bootstrap() async {
-    final t = await AuthStorage.getToken();
-    setState(() => _token = t);
-    await _loadBookings();
+    _loadBookings();
   }
 
   @override
@@ -137,20 +127,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   /* ===== API calls ===== */
   Future<void> _loadBookings() async {
-    if (_token == null || _token!.isEmpty) {
-      setState(() => _loading = false);
-      _toast('Please login again.');
-      return;
-    }
-
     try {
-      final res = await http.get(
-        Uri.parse('$API_BASE/api/me/bookings'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-      );
+      final res = await ApiClient.get('/api/me/bookings');
 
       if (!mounted) return;
 
@@ -211,19 +189,9 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   Future<void> _doCancel(int index) async {
     final booking = _bookings[index];
-    if (_token == null || _token!.isEmpty) {
-      _toast('Please login again.');
-      return;
-    }
 
     try {
-      final res = await http.post(
-        Uri.parse('$API_BASE/api/bookings/${booking.id}/cancel'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
-      );
+      final res = await ApiClient.get('/api/bookings/${booking.id}/cancel');
 
       if (res.statusCode == 200) {
         // อัปเดต card เป็น cancelled ทันที
@@ -356,7 +324,7 @@ class _Header extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD61F26).withOpacity(0.3),
+            color: const Color(0xFFD61F26).withValues(alpha:0.3),
             blurRadius: 24,
             offset: const Offset(0, 8),
             spreadRadius: -4,
@@ -368,9 +336,9 @@ class _Header extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha:0.2),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              border: Border.all(color: Colors.white.withValues(alpha:0.3), width: 2),
             ),
             child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 28),
           ),
@@ -395,7 +363,7 @@ class _Header extends StatelessWidget {
                     Container(
                       width: 4, height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha:0.8),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -404,7 +372,7 @@ class _Header extends StatelessWidget {
                       '$total Reservations',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha:0.9),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.2,
                       ),
@@ -434,18 +402,18 @@ class _EmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha:0.7),
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha:0.05),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
                 ],
               ),
               child: Icon(Icons.event_busy_rounded, size: 64,
-                  color: const Color(0xFF8B6F47).withOpacity(0.5)),
+                  color: const Color(0xFF8B6F47).withValues(alpha:0.5)),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -459,7 +427,7 @@ class _EmptyState extends StatelessWidget {
               'Book a room to get started',
               style: TextStyle(
                 fontSize: 14,
-                color: const Color(0xFF64748B).withOpacity(0.7),
+                color: const Color(0xFF64748B).withValues(alpha:0.7),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -509,7 +477,7 @@ class _CancelSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFD61F26).withOpacity(0.25),
+                        color: const Color(0xFFD61F26).withValues(alpha:0.25),
                         blurRadius: 12, offset: const Offset(0, 4),
                       )
                     ],
@@ -535,7 +503,7 @@ class _CancelSheet extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFFBF5),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE5D5C3).withOpacity(0.6), width: 1.5),
+                border: Border.all(color: const Color(0xFFE5D5C3).withValues(alpha:0.6), width: 1.5),
               ),
               child: Column(
                 children: [
@@ -571,7 +539,7 @@ class _CancelSheet extends StatelessWidget {
                       backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      shadowColor: const Color(0xFFEF4444).withOpacity(0.3),
+                      shadowColor: const Color(0xFFEF4444).withValues(alpha:0.3),
                     ),
                     onPressed: onConfirm,
                     child: const Text('Yes, cancel', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -677,19 +645,19 @@ class _BookingCardState extends State<_BookingCard> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.white.withOpacity(0.95)],
+                  colors: [Colors.white, Colors.white.withValues(alpha:0.95)],
                 ),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _statusColor.withOpacity(0.2), width: 2),
+                border: Border.all(color: _statusColor.withValues(alpha:0.2), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: _statusColor.withOpacity(_isPressed ? 0.2 : 0.15),
+                    color: _statusColor.withValues(alpha:_isPressed ? 0.2 : 0.15),
                     blurRadius: _isPressed ? 24 : 20,
                     offset: Offset(0, _isPressed ? 8 : 6),
                     spreadRadius: -3,
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha:0.05),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -704,8 +672,8 @@ class _BookingCardState extends State<_BookingCard> {
                       decoration: BoxDecoration(
                         gradient: RadialGradient(
                           colors: [
-                            _statusColor.withOpacity(0.08),
-                            _statusColor.withOpacity(0.0),
+                            _statusColor.withValues(alpha:0.08),
+                            _statusColor.withValues(alpha:0.0),
                           ],
                         ),
                       ),
@@ -755,7 +723,7 @@ class _BookingCardState extends State<_BookingCard> {
     decoration: BoxDecoration(
       gradient: const LinearGradient(colors: [Color(0xFF5D6CC4), Color(0xFF4A5AB3)]),
       borderRadius: BorderRadius.circular(16),
-      boxShadow: [BoxShadow(color: const Color(0xFF5D6CC4).withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+      boxShadow: [BoxShadow(color: const Color(0xFF5D6CC4).withValues(alpha:0.3), blurRadius: 12, offset: const Offset(0, 4))],
     ),
     child: const Icon(Icons.meeting_room_rounded, color: Colors.white, size: 22),
   );
@@ -772,8 +740,8 @@ class _BookingCardState extends State<_BookingCard> {
   Widget _statusChip(String text, Color bg, Color fg, IconData icon) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: fg.withOpacity(0.3), width: 2),
-      boxShadow: [BoxShadow(color: fg.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))],
+      color: bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: fg.withValues(alpha:0.3), width: 2),
+      boxShadow: [BoxShadow(color: fg.withValues(alpha:0.2), blurRadius: 8, offset: const Offset(0, 3))],
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 14, color: fg), const SizedBox(width: 6),
@@ -786,7 +754,7 @@ class _BookingCardState extends State<_BookingCard> {
     decoration: BoxDecoration(
       color: const Color(0xFFFFFBF5),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: const Color(0xFFE5D5C3).withOpacity(0.5), width: 1.5),
+      border: Border.all(color: const Color(0xFFE5D5C3).withValues(alpha:0.5), width: 1.5),
     ),
     child: Row(children: [
       Container(
@@ -794,7 +762,7 @@ class _BookingCardState extends State<_BookingCard> {
         decoration: BoxDecoration(
           gradient: const LinearGradient(colors: [Color(0xFFFFB547), Color(0xFFFF8A00)]),
           borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: const Color(0xFFFF8A00).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+          boxShadow: [BoxShadow(color: const Color(0xFFFF8A00).withValues(alpha:0.3), blurRadius: 8, offset: const Offset(0, 3))],
         ),
         child: const Icon(Icons.calendar_today_rounded, size: 16, color: Colors.white),
       ),
@@ -806,7 +774,7 @@ class _BookingCardState extends State<_BookingCard> {
         decoration: BoxDecoration(
           color: const Color(0xFFE0E4F7),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF5D6CC4).withOpacity(0.3), width: 1.5),
+          border: Border.all(color: const Color(0xFF5D6CC4).withValues(alpha:0.3), width: 1.5),
         ),
         child: const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF5D6CC4)),
       ),
@@ -818,16 +786,16 @@ class _BookingCardState extends State<_BookingCard> {
   Widget _dividerGlow(Color c) => Container(
     height: 2,
     decoration: BoxDecoration(
-      gradient: LinearGradient(colors: [Colors.transparent, c.withOpacity(0.3), Colors.transparent]),
+      gradient: LinearGradient(colors: [Colors.transparent, c.withValues(alpha:0.3), Colors.transparent]),
     ),
   );
 
   Widget _approvedBox(String? approver) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: const Color(0xFFD1FAE5).withOpacity(0.4),
+      color: const Color(0xFFD1FAE5).withValues(alpha:0.4),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.2), width: 1.5),
+      border: Border.all(color: const Color(0xFF10B981).withValues(alpha:0.2), width: 1.5),
     ),
     child: Row(children: [
       Container(
@@ -835,14 +803,14 @@ class _BookingCardState extends State<_BookingCard> {
         decoration: BoxDecoration(
           color: const Color(0xFFD1FAE5),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3), width: 1.5),
+          border: Border.all(color: const Color(0xFF10B981).withValues(alpha:0.3), width: 1.5),
         ),
         child: const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF10B981)),
       ),
       const SizedBox(width: 12),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('APPROVED BY', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF10B981).withOpacity(0.7), letterSpacing: 0.8)),
+          Text('APPROVED BY', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF10B981).withValues(alpha:0.7), letterSpacing: 0.8)),
           const SizedBox(height: 2),
           Text(approver ?? '-', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E))),
         ]),
@@ -857,7 +825,7 @@ class _BookingCardState extends State<_BookingCard> {
         backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14), elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        shadowColor: const Color(0xFFEF4444).withOpacity(0.3),
+        shadowColor: const Color(0xFFEF4444).withValues(alpha:0.3),
       ),
       onPressed: onTap,
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
@@ -875,27 +843,27 @@ class _BookingCardState extends State<_BookingCard> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: (isRejected ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)).withOpacity(0.4),
+        color: (isRejected ? const Color(0xFFFEF3C7) : const Color(0xFFFEE2E2)).withValues(alpha:0.4),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: base.withOpacity(0.2), width: 1.5),
+        border: Border.all(color: base.withValues(alpha:0.2), width: 1.5),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(Icons.info_rounded, size: 16, color: base.withOpacity(0.8)),
+          Icon(Icons.info_rounded, size: 16, color: base.withValues(alpha:0.8)),
           const SizedBox(width: 8),
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: base.withOpacity(0.8), letterSpacing: 0.3)),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: base.withValues(alpha:0.8), letterSpacing: 0.3)),
         ]),
         if (reason != null && reason.isNotEmpty) ...[
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.6),
+              color: Colors.white.withValues(alpha:0.6),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: base.withOpacity(0.15), width: 1),
+              border: Border.all(color: base.withValues(alpha:0.15), width: 1),
             ),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Reason: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF8B6F47).withOpacity(0.8))),
+              Text('Reason: ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF8B6F47).withValues(alpha:0.8))),
               Expanded(child: Text(reason, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)))),
             ]),
           ),

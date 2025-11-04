@@ -50,7 +50,7 @@ class _LecturerBarState extends State<LecturerBar> {
           // 🔹 PageView
           AnimatedBuilder(
             animation: _pc,
-            builder: (_, __) {
+            builder: (_, _) {
               final page = _pc.hasClients
                   ? _pc.page ?? _currentIndex.toDouble()
                   : _currentIndex.toDouble();
@@ -147,16 +147,16 @@ class _CapsuleIconBar extends StatelessWidget {
           BoxShadow(
             blurRadius: 24,
             offset: const Offset(0, 8),
-            color: const Color(0xFFDD0303).withOpacity(0.35),
+            color: const Color(0xFFDD0303).withValues(alpha:0.35),
           ),
           BoxShadow(
             blurRadius: 8,
             offset: const Offset(0, 2),
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha:0.15),
           ),
         ],
         border: Border.all(
-          color: const Color(0xFFFF4444).withOpacity(0.3),
+          color: const Color(0xFFFF4444).withValues(alpha:0.3),
           width: 1.5,
         ),
       ),
@@ -232,7 +232,7 @@ class _IconPillButton extends StatelessWidget {
             icon,
             size: 24,
             color:
-                active ? const Color(0xFFDD0303) : Colors.white.withOpacity(0.7),
+                active ? const Color(0xFFDD0303) : Colors.white.withValues(alpha:0.7),
           ),
         ),
       ),

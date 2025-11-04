@@ -1,15 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+
+import '../services/auth_storage.dart';
+import '../services/api_client.dart';
+import '../auth/login.dart';
+
 import '../staff/settingpage/help.dart';
 import '../staff/settingpage/privacy.dart';
 import '../staff/settingpage/service.dart';
-import 'package:http/http.dart' as http;
-import '../services/auth_storage.dart';
-import '../auth/login.dart';
-import 'dart:convert';
 
 class StudentProfilePage extends StatefulWidget {
   const StudentProfilePage({super.key, this.bottomOverlapPadding});
-
   final double? bottomOverlapPadding;
 
   @override
@@ -18,18 +19,12 @@ class StudentProfilePage extends StatefulWidget {
 
 class _StudentProfilePageState extends State<StudentProfilePage>
     with SingleTickerProviderStateMixin {
-
-  static const String API_BASE = 'http://192.168.1.131:3000';
-
-  String? _authToken;
   String? _username;
-  bool _loading = true;
   String? _name;
   String? _role;
+  bool _loading = true;
 
   late AnimationController _controller;
-
-
 
   @override
   void initState() {
@@ -39,7 +34,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       vsync: this,
     )..forward();
 
-    _fetchUserInfo();
+    _bootstrap();
   }
 
   @override
@@ -48,35 +43,37 @@ class _StudentProfilePageState extends State<StudentProfilePage>
     super.dispose();
   }
 
- Future<void> _fetchUserInfo() async {
+  Future<void> _bootstrap() async {
+    // 1) เติมจาก local storage ให้ UI ขึ้นไว
+    final cached = await AuthStorage.getAll();
+    final cachedId = cached['id'] as int?;
+    final cachedName = cached['name'] as String?;
+    final cachedUser = cached['username'] as String?;
+    final cachedRole = cached['role'] as String?;
+
+    if (mounted) {
+      setState(() {
+        _name = cachedName;
+        _username = cachedUser;
+        _role = cachedRole;
+        _loading = false; // ให้ UI โชว์ก่อน
+      });
+    }
+
+    // 2) ถ้ายังไม่ได้ล็อกอิน -> เด้งไป Login
+    final ok = await AuthStorage.isLoggedIn();
+    if (!ok || cachedId == null) {
+      _goLogin('No token or user info found, please log in again.');
+      return;
+    }
+
+    // 3) refresh ข้อมูลจาก backend
+    await _fetchUserFromApi(cachedId);
+  }
+
+  Future<void> _fetchUserFromApi(int userId) async {
     try {
-      setState(() => _loading = true);
-
-      // 🔹 Load token & userId from AuthStorage
-      final token = await AuthStorage.getToken();
-      final userId = await AuthStorage.getUserId();
-
-      if (token == null || userId == null) {
-        _toast('No token or user info found, please log in again.');
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-        );
-        return;
-      }
-
-      final headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-
-      // 🔹 Correct endpoint — replace :id with actual ID
-      final res = await http.get(
-        Uri.parse('$API_BASE/api/user/$userId'),
-        headers: headers,
-      );
-
+      final res = await ApiClient.get('/api/user/$userId'); // แนบ token อัตโนมัติ
       if (!mounted) return;
 
       if (res.statusCode == 200) {
@@ -85,31 +82,37 @@ class _StudentProfilePageState extends State<StudentProfilePage>
           _username = data['user']['username'];
           _name = data['user']['name'];
           _role = data['user']['role'];
-          _loading = false;
         });
       } else {
-        setState(() => _loading = false);
         _toast('Fetch user info failed (${res.statusCode})');
       }
+    } on ApiUnauthorized {
+      _goLogin('Session expired. Please log in again.');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loading = false);
       _toast('Cannot connect to server: $e');
     }
   }
 
+  void _goLogin(String msg) async {
+    _toast(msg);
+    await AuthStorage.clear();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
 
   void _toast(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: Colors.grey.shade800,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -273,11 +276,10 @@ class _ProfileCard extends StatefulWidget {
   final String? role;
 
   const _ProfileCard({
-    Key? key,
     this.onTap,
     this.name,
     this.role,
-  }) : super(key: key);
+  });
 
   @override
   State<_ProfileCard> createState() => _ProfileCardState();
@@ -307,7 +309,7 @@ class _ProfileCardState extends State<_ProfileCard> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(_isPressed ? 0.3 : 0.2),
+                color: const Color(0xFF6366F1).withValues(alpha:_isPressed ? 0.3 : 0.2),
                 blurRadius: _isPressed ? 20 : 16,
                 offset: Offset(0, _isPressed ? 6 : 4),
               ),
@@ -361,7 +363,7 @@ class _CircleAvatarIcon extends StatelessWidget {
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha:0.2),
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
       ),
@@ -369,23 +371,6 @@ class _CircleAvatarIcon extends StatelessWidget {
     );
   }
 }
-
-class _LightArrow extends StatelessWidget {
-  const _LightArrow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-    );
-  }
-}
-
 class _SettingMenuItem extends StatefulWidget {
   const _SettingMenuItem({
     required this.icon,
@@ -427,7 +412,7 @@ class _SettingMenuItemState extends State<_SettingMenuItem> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: widget.iconColor.withOpacity(_isPressed ? 0.12 : 0.06),
+                color: widget.iconColor.withValues(alpha:_isPressed ? 0.12 : 0.06),
                 blurRadius: _isPressed ? 16 : 10,
                 offset: Offset(0, _isPressed ? 6 : 3),
               ),
@@ -507,12 +492,12 @@ class _LogoutButtonState extends State<_LogoutButton> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFFDD0303).withOpacity(0.3),
+              color: const Color(0xFFDD0303).withValues(alpha:0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFDD0303).withOpacity(_isPressed ? 0.15 : 0.08),
+                color: const Color(0xFFDD0303).withValues(alpha:_isPressed ? 0.15 : 0.08),
                 blurRadius: _isPressed ? 16 : 10,
                 offset: Offset(0, _isPressed ? 6 : 3),
               ),

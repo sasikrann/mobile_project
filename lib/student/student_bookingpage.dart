@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../services/api_client.dart';
 import 'student_shell.dart';
 
 /// ===============================
@@ -12,14 +12,10 @@ class MyBookingsPage extends StatefulWidget {
     super.key,
     required this.roomId,
     required this.roomName,
-    required this.authToken,
-    this.apiBase = 'http://192.168.1.132:3000', // เปลี่ยนเป็น IP เครื่อง dev เมื่อรันบน device
   });
 
   final int roomId;
   final String roomName;
-  final String authToken;
-  final String apiBase;
 
   @override
   State<MyBookingsPage> createState() => _MyBookingsPageState();
@@ -73,13 +69,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     });
 
     try {
-      final res = await http.get(
-        Uri.parse('${widget.apiBase}/api/rooms/${widget.roomId}/status'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.authToken}',
-        },
-      );
+      final res = await ApiClient.get('/api/rooms/${widget.roomId}/status');
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -142,14 +132,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     };
 
     try {
-      final res = await http.post(
-        Uri.parse('${widget.apiBase}/api/bookings'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.authToken}',
-        },
-        body: json.encode(body),
-      );
+      final res = await ApiClient.post('/api/bookings', body: body);
 
       if (res.statusCode == 201) {
         return true;
@@ -267,18 +250,18 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.9),
-                        Colors.white.withOpacity(0.7),
+                        Colors.white.withValues(alpha:0.9),
+                        Colors.white.withValues(alpha:0.7),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha:0.5),
                       width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFD61F26).withOpacity(0.15),
+                        color: const Color(0xFFD61F26).withValues(alpha:0.15),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
@@ -293,7 +276,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                           color: const Color(0xFFFEF3E2),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: const Color(0xFFD61F26).withOpacity(0.2),
+                            color: const Color(0xFFD61F26).withValues(alpha:0.2),
                             width: 2,
                           ),
                         ),
@@ -361,18 +344,18 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(28),
                                   border: Border.all(
-                                    color: const Color(0xFFD61F26).withOpacity(0.2),
+                                    color: const Color(0xFFD61F26).withValues(alpha:0.2),
                                     width: 2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFD61F26).withOpacity(0.15),
+                                      color: const Color(0xFFD61F26).withValues(alpha:0.15),
                                       blurRadius: 28,
                                       offset: const Offset(0, 10),
                                       spreadRadius: -4,
                                     ),
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color: Colors.black.withValues(alpha:0.05),
                                       blurRadius: 16,
                                       offset: const Offset(0, 4),
                                     ),
@@ -486,7 +469,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                               boxShadow: isSelected
                                                   ? [
                                                       BoxShadow(
-                                                        color: palette.primary.withOpacity(0.2),
+                                                        color: palette.primary.withValues(alpha:0.2),
                                                         blurRadius: 12,
                                                         offset: const Offset(0, 4),
                                                       ),
@@ -543,7 +526,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                           ),
                                         ),
                                       );
-                                    }).toList(),
+                                    }),
 
                                     const SizedBox(height: 24),
 
@@ -565,7 +548,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                         hintText:
                                             'Enter the purpose of your booking...',
                                         hintStyle: TextStyle(
-                                          color: const Color(0xFF8B6F47).withOpacity(0.5),
+                                          color: const Color(0xFF8B6F47).withValues(alpha:0.5),
                                         ),
                                         filled: true,
                                         fillColor: const Color(0xFFFFFBF5),
@@ -649,7 +632,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                               shape: RoundedRectangleBorder(
                                                 borderRadius: BorderRadius.circular(16),
                                               ),
-                                              shadowColor: const Color(0xFFD61F26).withOpacity(0.3),
+                                              shadowColor: const Color(0xFFD61F26).withValues(alpha:0.3),
                                             ),
                                             onPressed: selectedTime == null
                                                 ? null
@@ -757,18 +740,18 @@ class ConfirmBookingPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Colors.white.withOpacity(0.9),
-                      Colors.white.withOpacity(0.7),
+                      Colors.white.withValues(alpha:0.9),
+                      Colors.white.withValues(alpha:0.7),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha:0.5),
                     width: 2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF10B981).withOpacity(0.15),
+                      color: const Color(0xFF10B981).withValues(alpha:0.15),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),
@@ -783,7 +766,7 @@ class ConfirmBookingPage extends StatelessWidget {
                         color: const Color(0xFFFEF3E2),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: const Color(0xFF10B981).withOpacity(0.2),
+                          color: const Color(0xFF10B981).withValues(alpha:0.2),
                           width: 2,
                         ),
                       ),
@@ -825,12 +808,12 @@ class ConfirmBookingPage extends StatelessWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(
-                          color: const Color(0xFF10B981).withOpacity(0.2),
+                          color: const Color(0xFF10B981).withValues(alpha:0.2),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF10B981).withOpacity(0.15),
+                            color: const Color(0xFF10B981).withValues(alpha:0.15),
                             blurRadius: 28,
                             offset: const Offset(0, 10),
                             spreadRadius: -4,
@@ -848,7 +831,7 @@ class ConfirmBookingPage extends StatelessWidget {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF10B981).withOpacity(0.3),
+                                  color: const Color(0xFF10B981).withValues(alpha:0.3),
                                   blurRadius: 20,
                                   offset: const Offset(0, 6),
                                 ),
@@ -875,7 +858,7 @@ class ConfirmBookingPage extends StatelessWidget {
                             "Your room has been reserved",
                             style: TextStyle(
                               fontSize: 14,
-                              color: const Color(0xFF64748B).withOpacity(0.7),
+                              color: const Color(0xFF64748B).withValues(alpha:0.7),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -920,7 +903,7 @@ class ConfirmBookingPage extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 shadowColor:
-                                    const Color(0xFF10B981).withOpacity(0.3),
+                                    const Color(0xFF10B981).withValues(alpha:0.3),
                               ),
                               onPressed: () {
                                 Navigator.pushReplacement(
@@ -982,7 +965,7 @@ class ConfirmBookingPage extends StatelessWidget {
             decoration: BoxDecoration(
               color: iconBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: iconColor.withOpacity(0.3), width: 1.5),
+              border: Border.all(color: iconColor.withValues(alpha:0.3), width: 1.5),
             ),
             child: Icon(icon, color: iconColor, size: 20),
           ),
@@ -1034,7 +1017,7 @@ class _CalIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF8A00).withOpacity(0.3),
+            color: const Color(0xFFFF8A00).withValues(alpha:0.3),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -1097,7 +1080,7 @@ _TilePalette _paletteFor(SlotStatus s, bool isSelected) {
         text: isSelected ? const Color(0xFFD61F26) : const Color(0xFF1A1A2E),
         iconBg: isSelected ? const Color(0xFFD61F26) : const Color(0xFFE0E4F7),
         iconBorder:
-            isSelected ? const Color(0xFFD61F26) : const Color(0xFF5D6CC4).withOpacity(0.3),
+            isSelected ? const Color(0xFFD61F26) : const Color(0xFF5D6CC4).withValues(alpha:0.3),
         iconFg: isSelected ? Colors.white : const Color(0xFF5D6CC4),
         primary: const Color(0xFFD61F26),
       );
@@ -1177,10 +1160,10 @@ class _StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: bd.withOpacity(0.4), width: 2),
+        border: Border.all(color: bd.withValues(alpha:0.4), width: 2),
         boxShadow: [
           BoxShadow(
-            color: bd.withOpacity(0.18),
+            color: bd.withValues(alpha:0.18),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),

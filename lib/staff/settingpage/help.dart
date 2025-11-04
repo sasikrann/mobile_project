@@ -192,7 +192,7 @@ class _SectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: section.color.withOpacity(0.15),
+            color: section.color.withValues(alpha:0.15),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -207,8 +207,8 @@ class _SectionCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  section.color.withOpacity(0.1),
-                  section.color.withOpacity(0.05),
+                  section.color.withValues(alpha:0.1),
+                  section.color.withValues(alpha:0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -223,7 +223,7 @@ class _SectionCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: section.color.withOpacity(0.15),
+                    color: section.color.withValues(alpha:0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
@@ -252,7 +252,7 @@ class _SectionCard extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: section.faqs.length,
-            separatorBuilder: (_, __) => const Divider(height: 24),
+            separatorBuilder: (_, _) => const Divider(height: 24),
             itemBuilder: (context, index) => _FaqItem(
               faq: section.faqs[index],
               color: section.color,
