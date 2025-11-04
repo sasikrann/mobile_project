@@ -130,19 +130,93 @@ app.get('/api/user/:id', verifyToken, (req, res) => {
 //------------------  ---------------------------/
 
 app.get('/api/rooms', (req, res) => {
-  const sql = 'SELECT * FROM rooms';
-  db.query(sql, (err, result) => {
+  const roomsSql = 'SELECT id, name, description, capacity, status, image FROM rooms';
+
+  db.query(roomsSql, (err, rooms) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ message: 'Database error' });
     }
-    res.status(200).json({
-      message: 'Fetched all rooms successfully',
-      rooms: result,
+
+    // ดึง bookings วันนี้ที่มีผลต่อการ "กันคิว"
+    const bookingsSql = `
+      SELECT room_id, time_slot, status
+      FROM bookings
+      WHERE booking_date = CURDATE()
+        AND status IN ('Pending', 'Approved')
+    `;
+    db.query(bookingsSql, (err2, bookings) => {
+      if (err2) {
+        console.error('Database error:', err2);
+        return res.status(500).json({ message: 'Database error' });
+      }
+
+      // map bookings ตามห้อง
+      const byRoom = new Map(); // room_id -> [{time_slot, status}, ...]
+      for (const b of bookings) {
+        if (!byRoom.has(b.room_id)) byRoom.set(b.room_id, []);
+        byRoom.get(b.room_id).push({ time_slot: b.time_slot, status: b.status });
+      }
+
+      // กำหนด end-time ของแต่ละ slot (รูปแบบ HH:MM:SS)
+      const SLOT_ENDS = {
+        '8-10':  '10:00:00',
+        '10-12': '12:00:00',
+        '13-15': '15:00:00',
+        '15-17': '17:00:00',
+      };
+      const ALL_SLOTS = Object.keys(SLOT_ENDS);
+
+      // เวลาปัจจุบันของ server (ใช้ MySQL CURRENT_TIME() ก็ได้ แต่ทำใน JS ให้ชัดเจน)
+      const now = new Date();
+      const nowHH = String(now.getHours()).padStart(2, '0');
+      const nowMM = String(now.getMinutes()).padStart(2, '0');
+      const nowSS = String(now.getSeconds()).padStart(2, '0');
+      const nowStr = `${nowHH}:${nowMM}:${nowSS}`;
+
+      function isPast(endHHMMSS) {
+        return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
+      }
+
+      // สร้างผลลัพธ์พร้อม status ใหม่: Free / Reserved / Disabled
+      const enriched = rooms.map((r) => {
+        // ถ้าโต๊ะ/ห้องถูกปิดระบบโดยตรง (เช่นมีคอลัมน์ status='disabled') ให้เป็น Disabled ทันที
+        // ถ้าไม่มีนโยบายนี้ ให้คงไว้เฉย ๆ แล้วใช้ logic slot ข้างล่างตัดสิน
+        if ((r.status || '').toLowerCase() === 'disabled') {
+          return { ...r, status: 'Disabled' };
+        }
+
+        const roomBookings = byRoom.get(r.id) || [];
+
+        // คัดเฉพาะ slot ที่ "ยังไม่หมดเวลา"
+        const remainingSlots = ALL_SLOTS.filter(slot => !isPast(SLOT_ENDS[slot]));
+
+        // ถ้าไม่เหลือ slot ให้จองแล้ว => Disabled
+        if (remainingSlots.length === 0) {
+          return { ...r, status: 'Disabled' };
+        }
+
+        // เช็คว่า remaining slot ถูกกันด้วย Pending/Approved ครบทุกช่องหรือไม่
+        // (ถือว่าใครจองก็กันคิวหมด)
+        const occupiedSet = new Set(
+          roomBookings
+            .filter(b => remainingSlots.includes(b.time_slot))
+            .map(b => b.time_slot)
+        );
+
+        const allTaken = remainingSlots.every(slot => occupiedSet.has(slot));
+
+        const derived = allTaken ? 'Reserved' : 'Free';
+        return { ...r, status: derived };
+      });
+
+      res.status(200).json({
+        message: 'Fetched all rooms successfully',
+        rooms: enriched,
+      });
     });
   });
 });
-
 
 app.get('/api/rooms/:id', (req, res) => {
   const roomId = req.params.id;

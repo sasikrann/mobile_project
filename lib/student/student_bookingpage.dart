@@ -102,8 +102,15 @@ class _MyBookingsPageState extends State<MyBookingsPage>
               _slotFromLabel(label, SlotStatus.free); // ช่องที่ไม่มา = Free
         }).toList();
 
+        final adjusted = complete.map((s) {
+          if (s.status == SlotStatus.free && _isSlotPastEnd(s.end)) {
+            return s.copyWith(status: SlotStatus.closed);
+          }
+          return s;
+        }).toList();
+
         setState(() {
-          _slots = complete;
+          _slots = adjusted;  // ⬅️ ใช้ adjusted แทน
           _loading = false;
         });
       } else {
@@ -221,6 +228,20 @@ class _MyBookingsPageState extends State<MyBookingsPage>
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  bool _isSlotPastEnd(String endHHmm) {
+    // endHHmm รูปแบบ "HH:MM"
+    final now = DateTime.now(); // local
+    // final now = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 10, 00);
+    final endParts = endHHmm.split(':');
+    if (endParts.length != 2) return false;
+    final endH = int.tryParse(endParts[0]) ?? 0;
+    final endM = int.tryParse(endParts[1]) ?? 0;
+
+    final endToday = DateTime(now.year, now.month, now.day, endH, endM);
+    // บล็อกเมื่อเวลาปัจจุบัน ">= เวลาสิ้นสุด"
+    return !now.isBefore(endToday);
   }
 
   @override
@@ -637,34 +658,40 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                                             onPressed: selectedTime == null
                                                 ? null
                                                 : () async {
-                                                    // ยิงจองจริง
-                                                    final ok = await _createBooking();
-                                                    if (!ok) return;
+                                                  final i = _indexOfLabel(selectedTime!);
+                                                  if (i == -1) return;
+                                                  final chosen = _slots[i];
 
-                                                    // อัปเดตสถานะให้เหมือน MyPending ใน UI ทันที
-                                                    final i = _indexOfLabel(selectedTime!);
-                                                    if (i != -1) {
+                                                  if (chosen.status != SlotStatus.free || _isSlotPastEnd(chosen.end)) {
+                                                    _toast('This time slot is already closed.');
+                                                    // sync UI เผื่อกรณีเวลาล่วงเลยระหว่างหน้าเปิดอยู่
+                                                    if (chosen.status == SlotStatus.free && _isSlotPastEnd(chosen.end)) {
                                                       setState(() {
-                                                        _slots[i] = _slots[i].copyWith(
-                                                          status: SlotStatus.pendingMe,
-                                                        );
+                                                        _slots[i] = _slots[i].copyWith(status: SlotStatus.closed);
                                                       });
                                                     }
+                                                    return;
+                                                  }
+                                                  // ยิงจองจริง
+                                                  final ok = await _createBooking();
+                                                  if (!ok) return;
 
-                                                    if (!mounted) return;
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) => ConfirmBookingPage(
-                                                          date: fixedDate,
-                                                          time: selectedTime!,
-                                                          purpose: purposeController.text.isEmpty
-                                                              ? '-'
-                                                              : purposeController.text,
-                                                        ),
+                                                  setState(() {
+                                                    _slots[i] = _slots[i].copyWith(status: SlotStatus.pendingMe);
+                                                  });
+
+                                                  if (!mounted) return;
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => ConfirmBookingPage(
+                                                        date: fixedDate,
+                                                        time: selectedTime!,
+                                                        purpose: purposeController.text.isEmpty ? '-' : purposeController.text,
                                                       ),
-                                                    );
-                                                  },
+                                                    ),
+                                                  );
+                                                },
                                             child: Row(
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: const [
@@ -1032,7 +1059,7 @@ class _CalIcon extends StatelessWidget {
   }
 }
 
-enum SlotStatus { free, reserved, pendingOther, pendingMe }
+enum SlotStatus { free, reserved, pendingOther, pendingMe, closed }
 
 class _Slot {
   final String start;
@@ -1114,6 +1141,16 @@ _TilePalette _paletteFor(SlotStatus s, bool isSelected) {
         iconFg: Color(0xFF7C3AED),
         primary: Color(0xFF7C3AED),
       );
+    case SlotStatus.closed:     // ⬅️ ใหม่: เทาๆ
+      return const _TilePalette(
+        tileBg: Color(0xFFF3F4F6),
+        border: Color(0xFFD1D5DB),
+        text: Color(0xFF6B7280),
+        iconBg: Color(0xFFE5E7EB),
+        iconBorder: Color(0xFFD1D5DB),
+        iconFg: Color(0xFF9CA3AF),
+        primary: Color(0xFF9CA3AF),
+      );
   }
 }
 
@@ -1152,6 +1189,12 @@ class _StatusBadge extends StatelessWidget {
         fg = const Color(0xFF7C3AED);
         bg = const Color(0xFFEDE9FE);
         bd = const Color(0xFF7C3AED);
+        break;
+      case SlotStatus.closed: // ⬅️ ใหม่
+        text = 'Closed';
+        fg = const Color(0xFF6B7280);
+        bg = const Color(0xFFF3F4F6);
+        bd = const Color(0xFFD1D5DB);
         break;
     }
 

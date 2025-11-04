@@ -80,9 +80,9 @@ class _StudentHomePageState extends State<StudentHomePage>
   void _openOrBlock({
     required int roomId,
     required String roomName,
-    required String statusLabel, // "Open" | "Closed"
+    required String statusLabel, // "Free" | "Reserved" | "Disabled"
   }) {
-    if (statusLabel == 'Open') {
+    if (statusLabel == 'Free') {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -92,8 +92,10 @@ class _StudentHomePageState extends State<StudentHomePage>
           ),
         ),
       );
+    } else if (statusLabel == 'Reserved') {
+      _toast("This room is fully booked for the remaining time today.");
     } else {
-      _toast("This room is closed now");
+      _toast("This room is not available now.");
     }
   }
 
@@ -107,37 +109,42 @@ class _StudentHomePageState extends State<StudentHomePage>
     );
   }
 
-  // ====== STATUS UI (Open / Closed) ======
-  String statusLabelFromApi(String? api) =>
-      (api ?? 'closed').toLowerCase() == 'open' ? 'Open' : 'Closed';
+  String statusLabelFromApi(String? api) {
+    switch ((api ?? '').toLowerCase()) {
+      case 'reserved':
+        return 'Reserved';
+      case 'disabled':
+        return 'Disabled';
+      case 'free':
+      default:
+        return 'Free';
+    }
+  }
 
   Color statusColor(String label) {
     switch (label) {
-      case 'Open':
-        return const Color(0xFF10B981);
-      case 'Closed':
-      default:
-        return const Color(0xFFEF4444);
+      case 'Reserved':  return const Color(0xFFF59E0B); // เหลือง
+      case 'Disabled':  return const Color(0xFFEF4444); // แดง
+      case 'Free':
+      default:          return const Color(0xFF10B981); // เขียว
     }
   }
 
   Color statusBg(String label) {
     switch (label) {
-      case 'Open':
-        return const Color(0xFFD1FAE5);
-      case 'Closed':
-      default:
-        return const Color(0xFFFEE2E2);
+      case 'Reserved':  return const Color(0xFFFEF3C7); // เหลืองอ่อน
+      case 'Disabled':  return const Color(0xFFFEE2E2); // แดงอ่อน
+      case 'Free':
+      default:          return const Color(0xFFD1FAE5); // เขียวอ่อน
     }
   }
 
   IconData statusIcon(String label) {
     switch (label) {
-      case 'Open':
-        return Icons.check_circle_rounded;
-      case 'Closed':
-      default:
-        return Icons.block_rounded;
+      case 'Reserved':  return Icons.event_busy_rounded;
+      case 'Disabled':  return Icons.block_rounded;
+      case 'Free':
+      default:          return Icons.check_circle_rounded;
     }
   }
 
@@ -329,8 +336,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                               final room = _rooms[index];
                               final int roomId = room['id'] as int;
                               final String roomName = (room['name'] ?? 'Room').toString();
-                              final String apiStatus = (room['status'] ?? 'closed').toString();
-                              final String label = statusLabelFromApi(apiStatus); // "Open"/"Closed"
+                              final String apiStatus = (room['status'] ?? 'disabled').toString();
+                              final String label = statusLabelFromApi(apiStatus);
                               final int capacity = (room['capacity'] ?? 0) as int;
                               final dynamic imageField = room['image']; // base64 or null
 
@@ -377,7 +384,7 @@ class _AnimatedLecturerCardForStudent extends StatefulWidget {
     required this.index,
     required this.controller,
     required this.title,
-    required this.statusLabel, // "Open"/"Closed"
+    required this.statusLabel,
     required this.capacity,
     required this.statusColor,
     required this.statusBgColor,
@@ -414,11 +421,11 @@ class _AnimatedLecturerCardForStudentState
       curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
     );
 
-    final bool isOpen = widget.statusLabel == 'Open';
+    final bool isAvailable = widget.statusLabel == 'Free';
 
-    final Color btnStart = isOpen ? const Color(0xFFFF4444) : const Color(0xFF9CA3AF);
-    final Color btnEnd   = isOpen ? const Color(0xFFDD0303) : const Color(0xFF6B7280);
-    final List<BoxShadow> btnShadow = isOpen
+    final Color btnStart = isAvailable ? const Color(0xFFFF4444) : const Color(0xFF9CA3AF);
+    final Color btnEnd   = isAvailable ? const Color(0xFFDD0303) : const Color(0xFF6B7280);
+    final List<BoxShadow> btnShadow = isAvailable
         ? [BoxShadow(color: const Color(0xFFDD0303).withValues(alpha:0.30), blurRadius: 10, offset: const Offset(0, 4))]
         : [BoxShadow(color: Colors.black.withValues(alpha:0.15), blurRadius: 8, offset: const Offset(0, 3))];
 
