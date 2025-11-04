@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../staff/settingpage/help.dart';
 import '../staff/settingpage/privacy.dart';
-import '../staff/settingpage/profile.dart';
 import '../staff/settingpage/service.dart';
+import 'package:http/http.dart' as http;
+import '../services/auth_storage.dart';
 import '../auth/login.dart';
+import 'dart:convert';
 
 class StudentProfilePage extends StatefulWidget {
   const StudentProfilePage({super.key, this.bottomOverlapPadding});
@@ -16,6 +18,15 @@ class StudentProfilePage extends StatefulWidget {
 
 class _StudentProfilePageState extends State<StudentProfilePage>
     with SingleTickerProviderStateMixin {
+
+  static const String API_BASE = 'http://192.168.1.131:3000';
+
+  String? _authToken;
+  String? _username;
+  bool _loading = true;
+  String? _name;
+  String? _role;
+
   late AnimationController _controller;
 
 
@@ -27,6 +38,8 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     )..forward();
+
+    
   }
 
   @override
@@ -34,6 +47,66 @@ class _StudentProfilePageState extends State<StudentProfilePage>
     _controller.dispose();
     super.dispose();
   }
+
+ Future<void> _fetchUserInfo() async {
+  try {
+    setState(() => _loading = true);
+
+    // 🔹 Load token & userId from AuthStorage
+    final token = await AuthStorage.getToken();
+    final userId = await AuthStorage.getUserId();
+
+    if (token == null || userId == null) {
+      _toast('No token or user info found, please log in again.');
+      setState(() => _loading = false);
+      return;
+    }
+
+    // 🔹 Build headers
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    // 🔹 Call API with actual userId (no :id literal)
+    final res = await http.get(
+      Uri.parse('$API_BASE/api/user/$userId'),
+      headers: headers,
+    );
+
+    if (!mounted) return;
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body);
+
+      setState(() {
+        _username = data['user']['username'];
+        _name = data['user']['name'];
+        _role = data['user']['role'];
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+      _toast('Fetch user info failed (${res.statusCode})');
+    }
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _loading = false);
+    _toast('Cannot connect to server: $e');
+  }
+}
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.grey.shade800,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -95,9 +168,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                     _buildAnimatedItem(
                       index: 0,
                       child: _ProfileCard(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage()));
-                        },
+                       
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -253,7 +324,6 @@ class _ProfileCardState extends State<_ProfileCard> {
                     ],
                   ),
                 ),
-                _LightArrow(),
               ],
             ),
           ),
