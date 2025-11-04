@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
+import '../services/api_client.dart';
 import '../services/auth_storage.dart';
 import './register.dart';
 import '../staff/staff_shell.dart';
@@ -41,11 +41,10 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('http://192.168.1.132:3000/api/login'), 
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
-      );
+      final response = await ApiClient.post('/api/login', body: {
+        'username': username,
+        'password': password,
+      });
 
       final data = jsonDecode(response.body);
 

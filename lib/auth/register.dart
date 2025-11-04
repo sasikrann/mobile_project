@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_application_1/services/api_client.dart';
 import 'login.dart'; 
 
 class RegisterPage extends StatefulWidget {
@@ -40,14 +40,12 @@ class _RegisterPageState extends State<RegisterPage> {
     setState(() => _isLoading = true);
 
     try {
-      final response = await http.post(
-        Uri.parse('http://192.168.1.132:3000/api/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final response = await ApiClient.post('/api/register',
+        body: {
           'name': name,
           'username': username,
           'password': password,
-        }),
+        }
       );
 
       final data = jsonDecode(response.body);
