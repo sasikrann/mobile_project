@@ -39,7 +39,7 @@ class _StudentProfilePageState extends State<StudentProfilePage>
       vsync: this,
     )..forward();
 
-    
+    _fetchUserInfo();
   }
 
   @override
@@ -49,52 +49,55 @@ class _StudentProfilePageState extends State<StudentProfilePage>
   }
 
  Future<void> _fetchUserInfo() async {
-  try {
-    setState(() => _loading = true);
+    try {
+      setState(() => _loading = true);
 
-    // 🔹 Load token & userId from AuthStorage
-    final token = await AuthStorage.getToken();
-    final userId = await AuthStorage.getUserId();
+      // 🔹 Load token & userId from AuthStorage
+      final token = await AuthStorage.getToken();
+      final userId = await AuthStorage.getUserId();
 
-    if (token == null || userId == null) {
-      _toast('No token or user info found, please log in again.');
+      if (token == null || userId == null) {
+        _toast('No token or user info found, please log in again.');
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+        return;
+      }
+
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+
+      // 🔹 Correct endpoint — replace :id with actual ID
+      final res = await http.get(
+        Uri.parse('$API_BASE/api/user/$userId'),
+        headers: headers,
+      );
+
+      if (!mounted) return;
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        setState(() {
+          _username = data['user']['username'];
+          _name = data['user']['name'];
+          _role = data['user']['role'];
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+        _toast('Fetch user info failed (${res.statusCode})');
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() => _loading = false);
-      return;
+      _toast('Cannot connect to server: $e');
     }
-
-    // 🔹 Build headers
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    };
-
-    // 🔹 Call API with actual userId (no :id literal)
-    final res = await http.get(
-      Uri.parse('$API_BASE/api/user/$userId'),
-      headers: headers,
-    );
-
-    if (!mounted) return;
-
-    if (res.statusCode == 200) {
-      final data = json.decode(res.body);
-
-      setState(() {
-        _username = data['user']['username'];
-        _name = data['user']['name'];
-        _role = data['user']['role'];
-        _loading = false;
-      });
-    } else {
-      setState(() => _loading = false);
-      _toast('Fetch user info failed (${res.statusCode})');
-    }
-  } catch (e) {
-    if (!mounted) return;
-    setState(() => _loading = false);
-    _toast('Cannot connect to server: $e');
   }
-}
+
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -165,11 +168,12 @@ class _StudentProfilePageState extends State<StudentProfilePage>
                     const SizedBox(height: 32),
 
                     // Profile Card (กดแล้วไป Edit Profile — เติมโค้ดเองที่นี่)
-                    _buildAnimatedItem(
-                      index: 0,
-                      child: _ProfileCard(
-                       
-                      ),
+                     _buildAnimatedItem(
+                            index: 0,
+                            child: _ProfileCard(
+                              name: _name,
+                              role: _role,
+                             )
                     ),
                     const SizedBox(height: 24),
 
@@ -218,13 +222,16 @@ class _StudentProfilePageState extends State<StudentProfilePage>
 
                     // Logout Button
                     _buildAnimatedItem(
-                      index: 4,
-                      child: _LogoutButton(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
-                        );
+                            index: 4,
+                            child: _LogoutButton(
+                              onTap: () async {
+                                await AuthStorage.clear();
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginPage(),
+                        ));
                         }, 
                       ),
                     ),
@@ -261,8 +268,16 @@ class _StudentProfilePageState extends State<StudentProfilePage>
 // ========================= วิดเจ็ตย่อย =========================
 
 class _ProfileCard extends StatefulWidget {
-  const _ProfileCard({this.onTap});
   final VoidCallback? onTap;
+  final String? name;
+  final String? role;
+
+  const _ProfileCard({
+    Key? key,
+    this.onTap,
+    this.name,
+    this.role,
+  }) : super(key: key);
 
   @override
   State<_ProfileCard> createState() => _ProfileCardState();
@@ -277,7 +292,7 @@ class _ProfileCardState extends State<_ProfileCard> {
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onTap, // เว้นไว้ให้
+      onTap: widget.onTap,
       child: AnimatedScale(
         scale: _isPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 150),
@@ -298,28 +313,31 @@ class _ProfileCardState extends State<_ProfileCard> {
               ),
             ],
           ),
-          child: const Padding(
-            padding: EdgeInsets.all(24.0),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Row(
               children: [
-                _CircleAvatarIcon(),
-                SizedBox(width: 16),
+                const _CircleAvatarIcon(),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Harry Potter',
-                        style: TextStyle(
+                        widget.name ?? 'Unknown User',
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'Student',
-                        style: TextStyle(fontSize: 13, color: Colors.white70),
+                        widget.role ?? 'Unknown Role',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -332,6 +350,7 @@ class _ProfileCardState extends State<_ProfileCard> {
     );
   }
 }
+
 
 class _CircleAvatarIcon extends StatelessWidget {
   const _CircleAvatarIcon();
