@@ -20,7 +20,7 @@ CREATE TABLE rooms (
   name VARCHAR(100) NOT NULL,
   description VARCHAR(255),
   capacity INT DEFAULT 4 NOT NULL,
-  status ENUM('open', 'closed') DEFAULT 'open',
+  status ENUM('available', 'disabled') DEFAULT 'available',
   image BLOB DEFAULT NULL
 );
 
