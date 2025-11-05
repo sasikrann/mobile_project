@@ -191,7 +191,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
     final booking = _bookings[index];
 
     try {
-      final res = await ApiClient.get('/api/bookings/${booking.id}/cancel');
+      final res = await ApiClient.post('/api/bookings/${booking.id}/cancel');
 
       if (res.statusCode == 200) {
         // อัปเดต card เป็น cancelled ทันที
