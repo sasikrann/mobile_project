@@ -232,8 +232,8 @@ class _MyBookingsPageState extends State<MyBookingsPage>
 
   bool _isSlotPastEnd(String endHHmm) {
     // endHHmm รูปแบบ "HH:MM"
-    // final now = DateTime.now(); // local ตามเวลาจริง
-    final now = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 11, 00); //จำลอง fix เวลา
+    final now = DateTime.now(); // เวลาจริง
+    //final now = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 13 , 00); //เวลาทดสอบ
     final endParts = endHHmm.split(':');
     if (endParts.length != 2) return false;
     final endH = int.tryParse(endParts[0]) ?? 0;
