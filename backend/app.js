@@ -97,13 +97,12 @@ function verifyToken(req, res, next) {
     next();
   });
 }
+
 app.get('/api/me', verifyToken, (req, res) => {
   res.json({ message: 'Token valid', user: req.user });
 });
 
-
-
-//-----------------   ---------------------------/
+//----------------- User Info ---------------------------/
 
 app.get('/api/user/:id', verifyToken, (req, res) => {
   const id  = req.params.id;
@@ -126,8 +125,7 @@ app.get('/api/user/:id', verifyToken, (req, res) => {
   });
 });
 
-
-//------------------  ---------------------------/
+//------------------ Rooms (หน้าเลือกห้อง) ---------------------------/
 
 app.get('/api/rooms', (req, res) => {
   const roomsSql = 'SELECT id, name, description, capacity, status, image FROM rooms';
@@ -172,9 +170,8 @@ app.get('/api/rooms', (req, res) => {
       const nowHH = String(now.getHours()).padStart(2, '0');
       const nowMM = String(now.getMinutes()).padStart(2, '0');
       const nowSS = String(now.getSeconds()).padStart(2, '0');
-      const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // เวลาจริง
-      //const nowStr = `11:00:00`;
-      // จำลองเวลา 
+      const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // ใช้เวลาจริงของ server
+      //const nowStr = `13:00:00`; // ถ้าอยาก debug แบบ fix เวลา
 
       function isPast(endHHMMSS) {
         return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
@@ -235,7 +232,8 @@ app.get('/api/rooms/:id', (req, res) => {
   });
 });
 
-//------------------ ---------------------------/
+//------------------ สร้าง Booking (นักศึกษา) ---------------------------/
+
 app.post('/api/bookings', verifyToken, (req, res) => {
   const { room_id, time_slot, reason } = req.body;
   const user_id = req.user.id;
@@ -244,7 +242,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
     return res.status(400).json({ message: 'Room ID and time slot are required' });
   }
 
-  // 1) กันผู้ใช้คนเดิมจองมากกว่า 1 รายการในวันเดียว (นับเฉพาะ Pending/Approved)
+  // 1) กันผู้ใช้คนเดิมจองมากกว่า 1 รายการในวันเดียว (Pending/Approved)
   const hasActiveSql = `
     SELECT 1 
     FROM bookings
@@ -280,7 +278,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
         });
       }
 
-      // 3) ผ่านทั้งสองเงื่อนไข -> สร้าง booking (เป็น Pending)
+      // 3) ผ่าน -> สร้าง booking (Pending)
       const insertSql = `
         INSERT INTO bookings (user_id, room_id, booking_date, time_slot, reason, status)
         VALUES (?, ?, CURDATE(), ?, ?, 'Pending')
@@ -303,31 +301,85 @@ app.post('/api/bookings', verifyToken, (req, res) => {
   });
 });
 
+//------------------ My Bookings (ฝั่ง Student + Auto-cancel) ---------------------------/
+
 app.get('/api/me/bookings', verifyToken, (req, res) => {
   const userId = req.user.id;
 
-  const sql = `
+  const baseSql = `
     SELECT 
       b.id            AS booking_id,
       r.name          AS room_name,
-      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,   -- DATE (yyyy-mm-dd)
-      b.time_slot     AS time_slot,      -- '8-10' | '10-12' | ...
-      b.status        AS status,         -- 'Pending' | 'Approved' | 'Rejected' | 'Cancelled'
-      b.reason        AS reason,          -- เหตุผลการจอง (ถ้ามี)
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,   -- yyyy-mm-dd
+      b.time_slot     AS time_slot,      
+      b.status        AS status,         
+      b.reason        AS reason,          
       b.reject_reason AS reject_reason,
-      appr.name       AS approver_name  -- อนุมัติโดยใคร (nullable)
+      appr.name       AS approver_name  
     FROM bookings b
-    JOIN rooms r       ON r.id = b.room_id
+    JOIN rooms r         ON r.id = b.room_id
     LEFT JOIN users appr ON appr.id = b.approver_id
     WHERE b.user_id = ?
     ORDER BY b.created_at DESC, b.id DESC
   `;
 
-  db.query(sql, [userId], (err, rows) => {
+  db.query(baseSql, [userId], (err, rows) => {
     if (err) return res.status(500).json({ message: 'Database error' });
-    res.json({ message: 'OK', bookings: rows });
+
+    if (!rows || rows.length === 0) {
+      return res.json({ message: 'OK', bookings: [] });
+    }
+
+    // ตรวจสอบรายการที่ยัง Pending แต่วันจองผ่านไปแล้ว -> Auto-cancel
+    const now = new Date();
+    const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const expiredIds = [];
+
+    for (const b of rows) {
+      if (b.status !== 'Pending') continue;
+
+      const bookingDate = new Date(b.booking_date); // 'yyyy-mm-dd'
+      const bookingOnly = new Date(
+        bookingDate.getFullYear(),
+        bookingDate.getMonth(),
+        bookingDate.getDate()
+      );
+
+      if (bookingOnly < todayOnly) {
+        expiredIds.push(b.booking_id);
+      }
+    }
+
+    if (expiredIds.length === 0) {
+      // ไม่มีอะไรหมดอายุ -> ส่งกลับเลย
+      return res.json({ message: 'OK', bookings: rows });
+    }
+
+    const updateSql = `
+      UPDATE bookings
+      SET status = 'Cancelled',
+          reject_reason = 'No approval before date passed'
+      WHERE id IN (?)
+        AND status = 'Pending'
+    `;
+
+    db.query(updateSql, [expiredIds], (err2) => {
+      if (err2) {
+        console.error('Auto-cancel update error:', err2);
+        // ถ้าอัปเดตพัง ก็ส่งของเดิมกลับไปก่อน
+        return res.json({ message: 'OK', bookings: rows });
+      }
+
+      // ดึงข้อมูลใหม่หลังอัปเดตให้ตรงกับ DB
+      db.query(baseSql, [userId], (err3, newRows) => {
+        if (err3) return res.status(500).json({ message: 'Database error' });
+        res.json({ message: 'OK', bookings: newRows });
+      });
+    });
   });
 });
+
+//------------------ Room Status (ใช้ตอนหน้าเลือก slot) ---------------------------/
 
 app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   const room_id = req.params.id;
@@ -348,8 +400,7 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
     db.query(bookingSql, [room_id], (err2, rows) => {
       if (err2) return res.status(500).json({ message: 'Database error' });
 
-      // เก็บ "รายการล่าสุด" ต่อหนึ่ง time_slot
-      const latestBySlot = new Map(); // key: '8-10' | '10-12' | ...
+      const latestBySlot = new Map(); // key: '8-10' ...
       for (const b of rows) {
         if (!latestBySlot.has(b.time_slot)) {
           latestBySlot.set(b.time_slot, b);
@@ -367,16 +418,16 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
         // map สถานะ
         switch (booking.status) {
           case 'Approved':
-            return { time_slot: slot, status: 'Reserved' }; // อนุมัติแล้ว มีคนใช้แน่
+            return { time_slot: slot, status: 'Reserved' };
           case 'Pending':
             return {
               time_slot: slot,
-              status: booking.user_id === user_id ? 'Pending' : 'On Hold', // รออนุมัติของใคร
+              status: booking.user_id === user_id ? 'Pending' : 'On Hold',
             };
           case 'Rejected':
           case 'Cancelled':
           default:
-            return { time_slot: slot, status: 'Free' }; // ปฏิเสธ/ยกเลิก = ว่าง
+            return { time_slot: slot, status: 'Free' };
         }
       });
 
@@ -393,6 +444,8 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
     });
   });
 });
+
+//------------------ Cancel Booking (นักศึกษา) ---------------------------/
 
 app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
   const bookingId = req.params.id;
@@ -414,7 +467,7 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
 
     // อัปเดตสถานะ
     const updateSql = 'UPDATE bookings SET status = "Cancelled" WHERE id = ?';
-    db.query(updateSql, [bookingId], (err2, result2) => {
+    db.query(updateSql, [bookingId], (err2) => {
       if (err2) return res.status(500).json({ message: 'Failed to cancel booking' });
 
       res.status(200).json({
