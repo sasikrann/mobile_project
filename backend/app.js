@@ -172,7 +172,9 @@ app.get('/api/rooms', (req, res) => {
       const nowHH = String(now.getHours()).padStart(2, '0');
       const nowMM = String(now.getMinutes()).padStart(2, '0');
       const nowSS = String(now.getSeconds()).padStart(2, '0');
-      const nowStr = `${nowHH}:${nowMM}:${nowSS}`;
+      // const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // เวลาจริง
+      const nowStr = `11:00:00`;
+      // จำลองเวลา 
 
       function isPast(endHHMMSS) {
         return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
