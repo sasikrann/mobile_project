@@ -4,7 +4,7 @@ import 'auth_storage.dart';
 
 class Config {
   // ✅ ตั้งไว้จุดเดียว เปลี่ยนที่เดียวทั้งแอป
-  static const apiBase = 'http://192.168.0.100:3000';
+  static const apiBase = 'http://172.27.6.221:3000';
 }
 
 class ApiClient {

@@ -330,10 +330,20 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: [] });
     }
 
+    // เวลา cutoff ของแต่ละสล็อต (เพิ่มใหม่)
+    const SLOT_ENDS = {
+      '8-10':  '10:00:00',
+      '10-12': '12:00:00',
+      '13-15': '15:00:00',
+      '15-17': '17:00:00',
+    };
+
     // ตรวจสอบรายการที่ยัง Pending แต่วันจองผ่านไปแล้ว -> Auto-cancel
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const expiredIds = [];
+    // เวลา HH:MM:SS ตอนนี้ (เพิ่มใหม่)
+    const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
 
     for (const b of rows) {
       if (b.status !== 'Pending') continue;
@@ -347,6 +357,15 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
       if (bookingOnly < todayOnly) {
         expiredIds.push(b.booking_id);
+        continue; 
+      }
+
+      // เพิ่มใหม่: วันนี้แต่เวลาสล็อตหมดแล้ว -> ถือว่าหมดอายุ
+      if (bookingOnly.getTime() === todayOnly.getTime()) {
+        const endTime = SLOT_ENDS[b.time_slot];
+        if (endTime && nowStr >= endTime) {
+          expiredIds.push(b.booking_id);
+        }
       }
     }
 
@@ -384,6 +403,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   const room_id = req.params.id;
   const user_id = req.user.id;
+
 
   const roomSql = 'SELECT * FROM rooms WHERE id = ?';
   db.query(roomSql, [room_id], (err, roomResult) => {
