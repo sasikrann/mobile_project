@@ -330,7 +330,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: [] });
     }
 
-    // เวลา cutoff ของแต่ละสล็อต (เพิ่มใหม่)
+    // เวลา cutoff ของแต่ละสล็อต
     const SLOT_ENDS = {
       '8-10':  '10:00:00',
       '10-12': '12:00:00',
@@ -338,12 +338,13 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       '15-17': '17:00:00',
     };
 
-    // ตรวจสอบรายการที่ยัง Pending แต่วันจองผ่านไปแล้ว -> Auto-cancel
+    // ตรวจสอบรายการที่ยัง Pending แต่หมดอายุ
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const expiredIds = [];
-    // เวลา HH:MM:SS ตอนนี้ (เพิ่มใหม่)
     const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+    const expiredByDate = []; // ข้ามวัน
+    const expiredByTime = []; // วันเดียวกันแต่เวลาสล็อตหมด
 
     for (const b of rows) {
       if (b.status !== 'Pending') continue;
@@ -355,45 +356,72 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
         bookingDate.getDate()
       );
 
+      // เคสข้ามวัน
       if (bookingOnly < todayOnly) {
-        expiredIds.push(b.booking_id);
-        continue; 
+        expiredByDate.push(b.booking_id);
+        continue;
       }
 
-      // เพิ่มใหม่: วันนี้แต่เวลาสล็อตหมดแล้ว -> ถือว่าหมดอายุ
+      // เคสวันนี้แต่เวลาสล็อตหมด
       if (bookingOnly.getTime() === todayOnly.getTime()) {
         const endTime = SLOT_ENDS[b.time_slot];
         if (endTime && nowStr >= endTime) {
-          expiredIds.push(b.booking_id);
+          expiredByTime.push(b.booking_id);
         }
       }
     }
 
-    if (expiredIds.length === 0) {
-      // ไม่มีอะไรหมดอายุ -> ส่งกลับเลย
+    if (expiredByDate.length === 0 && expiredByTime.length === 0) {
       return res.json({ message: 'OK', bookings: rows });
     }
 
-    const updateSql = `
+    // อัปเดตทีละชุดตามเหตุผล
+    const updateDateSql = `
       UPDATE bookings
       SET status = 'Cancelled',
           reject_reason = 'No approval before date passed'
       WHERE id IN (?)
         AND status = 'Pending'
     `;
+    const updateTimeSql = `
+      UPDATE bookings
+      SET status = 'Cancelled',
+          reject_reason = 'No approval before time passed'
+      WHERE id IN (?)
+        AND status = 'Pending'
+    `;
 
-    db.query(updateSql, [expiredIds], (err2) => {
-      if (err2) {
-        console.error('Auto-cancel update error:', err2);
-        // ถ้าอัปเดตพัง ก็ส่งของเดิมกลับไปก่อน
+    const doUpdateTime = () => {
+      if (expiredByTime.length === 0) {
+        // ดึงข้อมูลใหม่หลังอัปเดตให้ตรงกับ DB
+        return db.query(baseSql, [userId], (err3, newRows) => {
+          if (err3) return res.status(500).json({ message: 'Database error' });
+          res.json({ message: 'OK', bookings: newRows });
+        });
+      }
+      db.query(updateTimeSql, [expiredByTime], (errT) => {
+        if (errT) {
+          console.error('Auto-cancel (time) update error:', errT);
+          return res.json({ message: 'OK', bookings: rows });
+        }
+        db.query(baseSql, [userId], (err3, newRows) => {
+          if (err3) return res.status(500).json({ message: 'Database error' });
+          res.json({ message: 'OK', bookings: newRows });
+        });
+      });
+    };
+
+    if (expiredByDate.length === 0) {
+      // ไม่มีชุด date ก็ไปอัปเดต time ต่อเลย
+      return doUpdateTime();
+    }
+
+    db.query(updateDateSql, [expiredByDate], (errD) => {
+      if (errD) {
+        console.error('Auto-cancel (date) update error:', errD);
         return res.json({ message: 'OK', bookings: rows });
       }
-
-      // ดึงข้อมูลใหม่หลังอัปเดตให้ตรงกับ DB
-      db.query(baseSql, [userId], (err3, newRows) => {
-        if (err3) return res.status(500).json({ message: 'Database error' });
-        res.json({ message: 'OK', bookings: newRows });
-      });
+      doUpdateTime();
     });
   });
 });
