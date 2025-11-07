@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+
+// ✅ ปรับ path ให้ตรงโปรเจกต์ของคุณเอง
+import '../services/api_client.dart';
 
 void main() {
   runApp(const BookingApp());
@@ -26,7 +30,8 @@ class BookingApp extends StatelessWidget {
 enum BookingStatus { pending, approved, rejected }
 
 class Booking {
-  final int room;
+  final int id; // booking_id จาก DB
+  final String room; // ✅ เก็บชื่อห้องเป็น String แล้ว
   final DateTime date;
   final TimeOfDay start;
   final TimeOfDay end;
@@ -35,6 +40,7 @@ class Booking {
   String? rejectReason;
 
   Booking({
+    required this.id,
     required this.room,
     required this.date,
     required this.start,
@@ -43,6 +49,88 @@ class Booking {
     this.status = BookingStatus.pending,
     this.rejectReason,
   });
+
+  // ✅ แปลง JSON จากหลังบ้าน -> Booking
+  factory Booking.fromJson(Map<String, dynamic> json) {
+    // id / booking_id
+    final idRaw = json['booking_id'] ?? json['id'] ?? 0;
+    final int id = idRaw is int ? idRaw : int.tryParse(idRaw.toString()) ?? 0;
+
+    // ✅ ดึงชื่อห้อง: รองรับหลาย key จากหลังบ้าน
+    final String room =
+        (json['room_name'] ??
+                json['room_number'] ??
+                json['room'] ??
+                json['roomNo'] ??
+                json['name'] ??
+                '')
+            .toString();
+
+    // booking_date (คาดว่าเป็น "2025-11-08" หรือ ISO String)
+    final String dateStr =
+        (json['booking_date'] ?? json['date'] ?? '') as String;
+    DateTime date;
+    try {
+      date = DateTime.parse(dateStr);
+    } catch (_) {
+      date = DateTime.now();
+    }
+
+    // time_slot: "08:00-10:00" หรือ "08:00 - 10:00"
+    final String slot = (json['time_slot'] ?? json['time'] ?? '') as String;
+    String startStr = '00:00';
+    String endStr = '00:00';
+    if (slot.contains('-')) {
+      final parts = slot.split('-');
+      if (parts.length >= 2) {
+        startStr = parts[0].trim();
+        endStr = parts[1].trim();
+      }
+    }
+
+    TimeOfDay _parseTime(String t) {
+      final p = t.split(':');
+      if (p.length >= 2) {
+        final h = int.tryParse(p[0]) ?? 0;
+        final m = int.tryParse(p[1]) ?? 0;
+        return TimeOfDay(hour: h, minute: m);
+      }
+      return const TimeOfDay(hour: 0, minute: 0);
+    }
+
+    final start = _parseTime(startStr);
+    final end = _parseTime(endStr);
+
+    // bookedBy
+    final bookedBy =
+        (json['booked_by'] ??
+                json['student_name'] ??
+                json['lecturer_name'] ??
+                '')
+            as String;
+
+    // status
+    final statusRaw = (json['status'] ?? 'pending').toString().toLowerCase();
+    BookingStatus status;
+    if (statusRaw == 'approved' || statusRaw == 'confirm') {
+      status = BookingStatus.approved;
+    } else if (statusRaw == 'rejected') {
+      status = BookingStatus.rejected;
+    } else {
+      status = BookingStatus.pending;
+    }
+
+    return Booking(
+      id: id,
+      room: room,
+      date: date,
+      start: start,
+      end: end,
+      bookedBy: bookedBy,
+      status: status,
+      rejectReason: json['reject_reason'] as String?,
+    );
+  }
 }
 
 class BookingRequestsPage extends StatefulWidget {
@@ -54,17 +142,12 @@ class BookingRequestsPage extends StatefulWidget {
 
 class _BookingRequestsPageState extends State<BookingRequestsPage>
     with SingleTickerProviderStateMixin {
-  int _totalBookings = 1;
+  int _totalBookings = 0;
   late AnimationController _animController;
 
-  Booking booking = Booking(
-    room: 1,
-    date: DateTime(2024, 3, 15),
-    start: const TimeOfDay(hour: 8, minute: 0),
-    end: const TimeOfDay(hour: 10, minute: 0),
-    bookedBy: 'Ethan Carter',
-    status: BookingStatus.pending,
-  );
+  // 🔁 ใช้ list จากหลังบ้าน แทนตัวอย่างเดียว
+  List<Booking> bookings = [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -73,6 +156,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..forward();
+
+    fetchRequests();
   }
 
   @override
@@ -81,38 +166,86 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
     super.dispose();
   }
 
-  void _approve() {
-    setState(() {
-      booking.status = BookingStatus.approved;
-      _totalBookings = 0;
-    });
-    _animController.forward(from: 0);
-    _showTopNotification(
-      'Booking approved successfully!',
-      const Color(0xFF10B981),
-      Icons.check_circle_rounded,
-    );
+  // ========== CALL API ==========
+
+  Future<void> fetchRequests() async {
+    try {
+      final res = await ApiClient.get('/api/lecturer/requests');
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final List list = data['requests'] ?? [];
+        final newBookings = list
+            .map((e) => Booking.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        setState(() {
+          bookings = newBookings;
+          _totalBookings = bookings.length;
+          _loading = false;
+        });
+
+        _animController.forward(from: 0); // รีรันอนิเมชั่น
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      setState(() => _loading = false);
+    }
   }
 
-  void _showRejectDialog() {
+  Future<void> approveBooking(Booking b) async {
+    try {
+      await ApiClient.post(
+        '/api/lecturer/approve',
+        body: {'booking_id': b.id, 'decision': 'Approved'},
+      );
+      _showTopNotification(
+        'Booking approved successfully!',
+        const Color(0xFF10B981),
+        Icons.check_circle_rounded,
+      );
+      await fetchRequests();
+    } catch (_) {
+      _showTopNotification(
+        'Failed to approve booking',
+        const Color(0xFFEF4444),
+        Icons.error_outline_rounded,
+      );
+    }
+  }
+
+  Future<void> rejectBooking(Booking b, String reason) async {
+    try {
+      await ApiClient.post(
+        '/api/lecturer/approve',
+        body: {'booking_id': b.id, 'decision': 'Rejected', 'reason': reason},
+      );
+      _showTopNotification(
+        'Booking rejected',
+        const Color(0xFFEF4444),
+        Icons.cancel_rounded,
+      );
+      await fetchRequests();
+    } catch (_) {
+      _showTopNotification(
+        'Failed to reject booking',
+        const Color(0xFFEF4444),
+        Icons.error_outline_rounded,
+      );
+    }
+  }
+
+  // ========== UI เดิม (ปรับให้ใช้ bookings) ==========
+
+  void _showRejectDialog(Booking booking) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => RejectReasonSheet(
-        onReject: (reason) {
-          setState(() {
-            booking.status = BookingStatus.rejected;
-            booking.rejectReason = reason;
-            _totalBookings = 0;
-          });
-          _animController.forward(from: 0);
+        onReject: (reason) async {
           Navigator.pop(context);
-          _showTopNotification(
-            'Booking rejected',
-            const Color(0xFFEF4444),
-            Icons.cancel_rounded,
-          );
+          await rejectBooking(booking, reason);
         },
       ),
     );
@@ -120,6 +253,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
 
   void _showTopNotification(String message, Color color, IconData icon) {
     final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (context) => Positioned(
@@ -142,7 +277,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withValues(alpha:0.4),
+                        color: color.withValues(alpha: 0.4),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -216,7 +351,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFD61F26).withValues(alpha:0.3),
+                color: const Color(0xFFD61F26).withValues(alpha: 0.3),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
                 spreadRadius: -4,
@@ -228,10 +363,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha:0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha:0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -263,7 +398,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           width: 4,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha:0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -272,7 +407,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           '$_totalBookings ${_totalBookings == 1 ? 'Request' : 'Requests'} Pending',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.white.withValues(alpha:0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.2,
                           ),
@@ -321,10 +456,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: text.withValues(alpha:0.3), width: 2),
+        border: Border.all(color: text.withValues(alpha: 0.3), width: 2),
         boxShadow: [
           BoxShadow(
-            color: text.withValues(alpha:0.2),
+            color: text.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -374,20 +509,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.white.withValues(alpha:0.95)],
+            colors: [Colors.white, Colors.white.withValues(alpha: 0.95)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: b.status == BookingStatus.pending
-                ? const Color(0xFF7C3AED).withValues(alpha:0.2)
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
                 : b.status == BookingStatus.approved
-                ? const Color(0xFF10B981).withValues(alpha:0.2)
-                : const Color(0xFFEF4444).withValues(alpha:0.2),
+                ? const Color(0xFF10B981).withValues(alpha: 0.2)
+                : const Color(0xFFEF4444).withValues(alpha: 0.2),
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 20,
               offset: const Offset(0, 8),
               spreadRadius: -3,
@@ -396,7 +531,6 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
         ),
         child: Stack(
           children: [
-            // Decorative gradient
             Positioned(
               top: 0,
               right: 0,
@@ -411,15 +545,13 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                               : b.status == BookingStatus.approved
                               ? const Color(0xFF10B981)
                               : const Color(0xFFEF4444))
-                          .withValues(alpha:0.08),
+                          .withValues(alpha: 0.08),
                       Colors.transparent,
                     ],
                   ),
                 ),
               ),
             ),
-
-            // Content
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -437,7 +569,9 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
+                              color: const Color(
+                                0xFF5D6CC4,
+                              ).withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -465,7 +599,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Room ${b.room}',
+                              '${b.room}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
@@ -489,7 +623,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                       color: const Color(0xFFFFFBF5),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
+                        color: const Color(0xFFE5D5C3).withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                     ),
@@ -504,7 +638,9 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00).withValues(alpha:0.3),
+                                color: const Color(
+                                  0xFFFF8A00,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -534,7 +670,9 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             color: const Color(0xFFE0E4F7),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
+                              color: const Color(
+                                0xFF5D6CC4,
+                              ).withValues(alpha: 0.3),
                               width: 1.5,
                             ),
                           ),
@@ -558,19 +696,19 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                   ),
                   const SizedBox(height: 16),
 
-                  // Booked by section
+                  // Booked by
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF5D6CC4).withValues(alpha:0.08),
-                          const Color(0xFF4A5AB3).withValues(alpha:0.05),
+                          const Color(0xFF5D6CC4).withValues(alpha: 0.08),
+                          const Color(0xFF4A5AB3).withValues(alpha: 0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: const Color(0xFF5D6CC4).withValues(alpha:0.2),
+                        color: const Color(0xFF5D6CC4).withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -585,7 +723,9 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
+                                color: const Color(
+                                  0xFF5D6CC4,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 8,
                               ),
                             ],
@@ -608,7 +748,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   fontWeight: FontWeight.w700,
                                   color: const Color(
                                     0xFF8B6F47,
-                                  ).withValues(alpha:0.7),
+                                  ).withValues(alpha: 0.7),
                                   letterSpacing: 0.8,
                                 ),
                               ),
@@ -637,7 +777,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                         gradient: LinearGradient(
                           colors: [
                             Colors.transparent,
-                            const Color(0xFF7C3AED).withValues(alpha:0.3),
+                            const Color(0xFF7C3AED).withValues(alpha: 0.3),
                             Colors.transparent,
                           ],
                         ),
@@ -648,7 +788,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _approve,
+                            onPressed: () => approveBooking(b),
                             icon: const Icon(Icons.check_rounded, size: 20),
                             label: const Text('Approve'),
                             style:
@@ -658,7 +798,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   elevation: 0,
                                   shadowColor: const Color(
                                     0xFF10B981,
-                                  ).withValues(alpha:0.3),
+                                  ).withValues(alpha: 0.3),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -680,7 +820,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: _showRejectDialog,
+                            onPressed: () => _showRejectDialog(b),
                             icon: const Icon(Icons.close_rounded, size: 20),
                             label: const Text('Reject'),
                             style:
@@ -690,7 +830,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                   elevation: 0,
                                   shadowColor: const Color(
                                     0xFFEF4444,
-                                  ).withValues(alpha:0.3),
+                                  ).withValues(alpha: 0.3),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                   ),
@@ -723,6 +863,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
 
   @override
   Widget build(BuildContext context) {
+    final allPending = bookings
+        .where((b) => b.status == BookingStatus.pending)
+        .toList();
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -738,12 +882,14 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
             children: [
               _buildTopHeader(),
               Expanded(
-                child: booking.status == BookingStatus.pending
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : allPending.isNotEmpty
                     ? ListView(
                         padding: const EdgeInsets.only(bottom: 18),
                         children: [
                           const SizedBox(height: 8),
-                          _bookingCard(booking),
+                          for (final b in allPending) _bookingCard(b),
                         ],
                       )
                     : Center(
@@ -759,7 +905,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha:0.06),
+                                  color: Colors.black.withValues(alpha: 0.06),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -776,7 +922,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     border: Border.all(
                                       color: const Color(
                                         0xFFE5D5C3,
-                                      ).withValues(alpha:0.5),
+                                      ).withValues(alpha: 0.5),
                                       width: 2,
                                     ),
                                   ),
@@ -785,7 +931,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                                     size: 56,
                                     color: const Color(
                                       0xFF8B6F47,
-                                    ).withValues(alpha:0.5),
+                                    ).withValues(alpha: 0.5),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
@@ -822,7 +968,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
   }
 }
 
-// Reject Reason Bottom Sheet
+// Reject Reason Bottom Sheet (เหมือนเดิม)
 class RejectReasonSheet extends StatefulWidget {
   final Function(String) onReject;
 
@@ -907,7 +1053,9 @@ class _RejectReasonSheetState extends State<RejectReasonSheet>
                             color: const Color(0xFFFEE2E2),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: const Color(0xFFEF4444).withValues(alpha:0.3),
+                              color: const Color(
+                                0xFFEF4444,
+                              ).withValues(alpha: 0.3),
                               width: 2,
                             ),
                           ),
@@ -1036,12 +1184,13 @@ class _RejectReasonSheetState extends State<RejectReasonSheet>
                         controller: _reasonController,
                         maxLines: 3,
                         autofocus: true,
-                        onChanged: (value) =>
-                            setState(() {}), // ✅ เพิ่มบรรทัดนี้
+                        onChanged: (value) => setState(() {}),
                         decoration: InputDecoration(
                           hintText: 'Enter rejection reason...',
                           hintStyle: TextStyle(
-                            color: const Color(0xFF8B6F47).withValues(alpha:0.5),
+                            color: const Color(
+                              0xFF8B6F47,
+                            ).withValues(alpha: 0.5),
                           ),
                           filled: true,
                           fillColor: const Color(0xFFFFFBF5),
