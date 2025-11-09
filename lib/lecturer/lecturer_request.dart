@@ -88,7 +88,7 @@ class Booking {
       }
     }
 
-    TimeOfDay _parseTime(String t) {
+    TimeOfDay parseTime(String t) {
       final p = t.split(':');
       if (p.length >= 2) {
         final h = int.tryParse(p[0]) ?? 0;
@@ -98,8 +98,8 @@ class Booking {
       return const TimeOfDay(hour: 0, minute: 0);
     }
 
-    final start = _parseTime(startStr);
-    final end = _parseTime(endStr);
+    final start = parseTime(startStr);
+    final end = parseTime(endStr);
 
     // bookedBy
     final bookedBy =
@@ -253,7 +253,6 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
 
   void _showTopNotification(String message, Color color, IconData icon) {
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     late OverlayEntry entry;
     entry = OverlayEntry(
@@ -599,7 +598,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${b.room}',
+                              b.room,
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,

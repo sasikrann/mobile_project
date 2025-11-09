@@ -178,12 +178,12 @@ class _TimeslotState extends State<Timeslot> with TickerProviderStateMixin {
                   vertical: 16,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha:0.8),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.white70, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFD61F26).withOpacity(0.15),
+                      color: const Color(0xFFD61F26).withValues(alpha:0.15),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),
@@ -199,7 +199,7 @@ class _TimeslotState extends State<Timeslot> with TickerProviderStateMixin {
                         color: const Color(0xFFFEF3E2),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: const Color(0xFFD61F26).withOpacity(0.2),
+                          color: const Color(0xFFD61F26).withValues(alpha:0.2),
                           width: 2,
                         ),
                       ),
@@ -265,13 +265,13 @@ class _TimeslotState extends State<Timeslot> with TickerProviderStateMixin {
                                 borderRadius: BorderRadius.circular(28),
                                 border: Border.all(
                                   color: const Color(0xFFD61F26)
-                                      .withOpacity(0.2),
+                                      .withValues(alpha:0.2),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFFD61F26)
-                                        .withOpacity(0.15),
+                                        .withValues(alpha:0.15),
                                     blurRadius: 28,
                                     offset: const Offset(0, 10),
                                     spreadRadius: -4,
@@ -457,9 +457,9 @@ class _TimeslotState extends State<Timeslot> with TickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha:0.15),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.4), width: 2),
+        border: Border.all(color: color.withValues(alpha:0.4), width: 2),
       ),
       child: Text(
         text,
