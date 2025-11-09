@@ -426,6 +426,70 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
   });
 });
 
+// ====================== Lecturer API ==========================
+app.get('/api/lecturer/requests', verifyToken, (req, res) => {
+  if (req.user.role !== 'lecturer')
+    return res.status(403).json({ message: 'Forbidden' });
+
+  const sql = `
+    SELECT b.id AS booking_id, u.name AS student_name, r.name AS room_name,
+           DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+           b.time_slot, b.reason, b.status
+    FROM bookings b
+    JOIN users u ON u.id = b.user_id
+    JOIN rooms r ON r.id = b.room_id
+    WHERE b.status = 'Pending'
+    ORDER BY b.created_at DESC
+  `;
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    res.json({ message: 'OK', requests: result });
+  });
+});
+
+app.post('/api/lecturer/approve', verifyToken, (req, res) => {
+  if (req.user.role !== 'lecturer')
+    return res.status(403).json({ message: 'Forbidden' });
+
+  const { booking_id, decision, reason } = req.body;
+  const approver_id = req.user.id;
+
+  if (!booking_id || !decision)
+    return res.status(400).json({ message: 'Missing fields' });
+
+  const status = decision === 'Approved' ? 'Approved' : 'Rejected';
+  const sql = `
+    UPDATE bookings
+    SET status = ?, approver_id = ?, reject_reason = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [status, approver_id, reason || null, booking_id], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    res.json({ message: 'Updated successfully', status });
+  });
+});
+
+app.get('/api/lecturer/history', verifyToken, (req, res) => {
+  if (req.user.role !== 'lecturer')
+    return res.status(403).json({ message: 'Forbidden' });
+
+  const sql = `
+    SELECT b.id AS booking_id, u.name AS student_name, r.name AS room_name,
+           DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+           b.time_slot, b.status, b.reject_reason
+    FROM bookings b
+    JOIN users u ON u.id = b.user_id
+    JOIN rooms r ON r.id = b.room_id
+    WHERE b.status IN ('Approved','Rejected')
+    ORDER BY b.created_at DESC
+  `;
+  db.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error' });
+    res.json({ message: 'OK', history: result });
+  });
+});
+
+
 //------------------ Room Status (ใช้ตอนหน้าเลือก slot) ---------------------------/
 
 app.get('/api/rooms/:id/status', verifyToken, (req, res) => {

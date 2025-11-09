@@ -1,4 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+
+// 🔁 ปรับ path ให้ตรงกับโปรเจกต์ของคุณเอง
+import '../services/api_client.dart';
 
 class LecturerHistoryBookingPage extends StatefulWidget {
   const LecturerHistoryBookingPage({
@@ -17,36 +21,9 @@ class _LecturerHistoryBookingPageState
     extends State<LecturerHistoryBookingPage> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
-  final List<BookingData> bookings = [
-    BookingData(
-      roomNumber: '3',
-      date: '15 March 2024',
-      time: '13:00 AM - 15:00',
-      bookedBy: 'Noah Parker',
-      status: BookingStatus.approved,
-    ),
-    BookingData(
-      roomNumber: '6',
-      date: '15 March 2024',
-      time: '10:00 AM - 12:00',
-      bookedBy: 'Olivia Harper',
-      status: BookingStatus.approved,
-    ),
-    BookingData(
-      roomNumber: '1',
-      date: '15 March 2024',
-      time: '8:00 PM - 10:00',
-      bookedBy: 'Ethan Carter',
-      status: BookingStatus.pending,
-    ),
-    BookingData(
-      roomNumber: '4',
-      date: '15 March 2024',
-      time: '',
-      bookedBy: 'Isabella Hayes',
-      status: BookingStatus.disabled,
-    ),
-  ];
+  // ✅ ใช้ข้อมูลจากหลังบ้านแทน mock
+  List<BookingData> bookings = [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -55,6 +32,41 @@ class _LecturerHistoryBookingPageState
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..forward();
+
+    // 🔁 ดึง history จาก API
+    fetchHistory();
+  }
+
+  Future<void> fetchHistory() async {
+    try {
+      final res = await ApiClient.get('/api/lecturer/history');
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        // สมมติหลังบ้านส่งแบบ:
+        // { "history": [ { ... }, { ... } ] }
+        final List list = data['history'] ?? [];
+
+        setState(() {
+          bookings = list
+              .map((e) => BookingData.fromJson(e as Map<String, dynamic>))
+              .toList();
+          _loading = false;
+        });
+      } else {
+        // error code อื่น ๆ
+        setState(() {
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      // debug print ไว้เวลา test
+      // print('fetchHistory error: $e');
+      setState(() {
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -87,17 +99,19 @@ class _LecturerHistoryBookingPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header (ใช้สีเดิม)
+              // Header เดิม (ไม่ยุ่ง UI)
               FadeTransition(
                 opacity: _controller,
                 child: SlideTransition(
                   position: Tween<Offset>(
                     begin: const Offset(0, -0.3),
                     end: Offset.zero,
-                  ).animate(CurvedAnimation(
-                    parent: _controller,
-                    curve: Curves.easeOutCubic,
-                  )),
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
                   child: Container(
                     margin: const EdgeInsets.all(20.0),
                     padding: const EdgeInsets.all(24.0),
@@ -106,24 +120,26 @@ class _LecturerHistoryBookingPageState
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          Colors.white.withValues(alpha:0.9),
-                          Colors.white.withValues(alpha:0.7),
+                          Colors.white.withValues(alpha: 0.9),
+                          Colors.white.withValues(alpha: 0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
+                        color:
+                            const Color(0xFFE5D5C3).withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFD4A574).withValues(alpha:0.15),
+                          color:
+                              const Color(0xFFD4A574).withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                           spreadRadius: -4,
                         ),
                         BoxShadow(
-                          color: Colors.white.withValues(alpha:0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           blurRadius: 16,
                           offset: const Offset(-4, -4),
                         ),
@@ -145,7 +161,8 @@ class _LecturerHistoryBookingPageState
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00).withValues(alpha:0.3),
+                                color: const Color(0xFFFF8A00)
+                                    .withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -206,13 +223,29 @@ class _LecturerHistoryBookingPageState
 
               // Booking List
               Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad),
-                  itemCount: bookings.length,
-                  itemBuilder: (context, index) {
-                    return _BookingCard(booking: bookings[index]);
-                  },
-                ),
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(),
+                      )
+                    : bookings.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No booking history',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.brown.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding:
+                                EdgeInsets.fromLTRB(20, 0, 20, bottomPad),
+                            itemCount: bookings.length,
+                            itemBuilder: (context, index) {
+                              return _BookingCard(booking: bookings[index]);
+                            },
+                          ),
               ),
             ],
           ),
@@ -279,16 +312,16 @@ class _BookingCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.white.withValues(alpha:0.95)],
+            colors: [Colors.white, Colors.white.withValues(alpha: 0.95)],
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _statusColor.withValues(alpha:0.2),
+            color: _statusColor.withValues(alpha: 0.2),
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: _statusColor.withValues(alpha:0.12),
+              color: _statusColor.withValues(alpha: 0.12),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -321,7 +354,7 @@ class _BookingCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 14),
                       Text(
-                        'Room ${booking.roomNumber}',
+                        booking.roomNumber,
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
@@ -331,12 +364,13 @@ class _BookingCard extends StatelessWidget {
                     ],
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: _statusBgColor,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _statusColor.withValues(alpha:0.3),
+                        color: _statusColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -361,14 +395,14 @@ class _BookingCard extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Date + Time
+              // Date + Time + Booked by
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFBF5),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: const Color(0xFFE5D5C3).withValues(alpha:0.5),
+                    color: const Color(0xFFE5D5C3).withValues(alpha: 0.5),
                     width: 1.5,
                   ),
                 ),
@@ -413,7 +447,8 @@ class _BookingCard extends StatelessWidget {
                               color: const Color(0xFFE0E4F7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
+                                color: const Color(0xFF5D6CC4)
+                                    .withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                             ),
@@ -446,7 +481,8 @@ class _BookingCard extends StatelessWidget {
                             color: const Color(0xFFE0E4F7),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF5D6CC4).withValues(alpha:0.3),
+                              color: const Color(0xFF5D6CC4)
+                                  .withValues(alpha: 0.3),
                               width: 1.5,
                             ),
                           ),
@@ -496,4 +532,32 @@ class BookingData {
     required this.bookedBy,
     required this.status,
   });
+
+  // ✅ แปลง JSON จากหลังบ้าน -> BookingData
+  factory BookingData.fromJson(Map<String, dynamic> json) {
+    return BookingData(
+      roomNumber: (json['room_name'] ?? json['room'] ?? '').toString(),
+      date: (json['booking_date'] ?? json['date'] ?? '') as String,
+      time: (json['time_slot'] ?? json['time'] ?? '') as String,
+      bookedBy:
+          (json['booked_by'] ?? json['lecturer_name'] ?? json['student_name'] ?? '')
+              as String,
+      status: _parseStatus(json['status']),
+    );
+  }
+
+  // แปลงสถานะจาก String ของ DB -> enum
+  static BookingStatus _parseStatus(dynamic raw) {
+    final s = (raw ?? '').toString().toLowerCase();
+
+    if (s == 'approved' || s == 'confirm' || s == 'confirmed') {
+      return BookingStatus.approved;
+    }
+    if (s == 'pending' || s == 'waiting') {
+      return BookingStatus.pending;
+    }
+
+    // เหลืออย่างอื่น (rejected / cancelled / closed / disabled) ให้แดงไว้
+    return BookingStatus.disabled;
+  }
 }
