@@ -1,8 +1,8 @@
 // staff_dashboard.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../services/auth_storage.dart';
+import '../services/api_client.dart';
 
 class StaffDashboardPage extends StatefulWidget {
   const StaffDashboardPage({super.key});
@@ -24,9 +24,6 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
 
   bool loading = true;
   String? token;
-
-  // Change to your machine IP when testing on device/emulator
-  static const String apiBase = 'http://192.168.1.131:3000';
 
   @override
   void initState() {
@@ -63,85 +60,86 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
     setState(() => loading = true);
 
     try {
-      final roomsRes = await http.get(
-        Uri.parse('$apiBase/api/rooms'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
+      // ===== 1️⃣ ดึงรายการห้องทั้งหมด =====
+      final roomsRes = await ApiClient.get('/api/rooms');
       if (roomsRes.statusCode != 200) {
         throw Exception('Failed to fetch rooms (${roomsRes.statusCode})');
       }
 
-      final rooms = jsonDecode(roomsRes.body)['rooms'] as List<dynamic>;
+      final rooms = (jsonDecode(roomsRes.body)['rooms'] as List<dynamic>);
       totalRooms = rooms.length;
 
-      // closed rooms count comes from rooms.status column
-      totalClosedRooms = rooms.where((r) {
-        final s = (r['status'] ?? '').toString().toLowerCase();
-        return s == 'closed';
-      }).length;
+      // ===== 2️⃣ แยกห้องที่ปิดออก =====
+      final closedRooms = rooms.where((r) {
+        final status = (r['status'] ?? '').toString().toLowerCase();
+        return status == 'closed';
+      }).toList();
 
-      final openRooms = totalRooms - totalClosedRooms;
-      final int totalPossibleSlots = openRooms * 4;
+      totalClosedRooms = closedRooms.length;
+      final openRooms = rooms.where((r) => !closedRooms.contains(r)).toList();
 
+      // 1 ห้องมี 4 slot
+      final totalPossibleSlots = openRooms.length * 4;
       int reserved = 0;
       int pending = 0;
 
-      // Fetch statuses for open rooms in parallel
-      final futures = <Future>[];
-      for (final r in rooms) {
-        final roomStatus = (r['status'] ?? '').toString().toLowerCase();
-        if (roomStatus == 'closed') {
-          // skip closed rooms
-          continue;
-        }
-        final id = r['id'];
-        futures.add(http
-            .get(Uri.parse('$apiBase/api/rooms/$id/status'),
-                headers: {'Authorization': 'Bearer $token'})
-            .then((res) {
+      // ===== 3️⃣ ดึงสถานะห้องที่เปิดอยู่ (parallel fetch) =====
+      final futures = openRooms.map((room) async {
+        final id = room['id'];
+        try {
+          final res = await ApiClient.get('/api/rooms/$id/status');
+
           if (res.statusCode == 200) {
-            final data = jsonDecode(res.body) as Map<String, dynamic>;
-            final slots = (data['slots'] as List<dynamic>?) ?? [];
+            final body = jsonDecode(res.body) as Map<String, dynamic>;
+            final slots = (body['slots'] as List<dynamic>?) ?? [];
+
             for (final s in slots) {
               final st = (s['status'] ?? '').toString().toLowerCase().trim();
               if (st == 'reserved') {
-                reserved += 1;
+                reserved++;
               } else if (st == 'pending' || st == 'on hold' || st == 'onhold') {
-                pending += 1;
-              } else {
-                // 'free' or unknown -> treat implicitly as free (do not increment reserved/pending)
+                pending++;
               }
             }
-          } else {
-            // If status endpoint failed for this room, conservatively assume all slots free.
-            // That means we don't change reserved/pending.
           }
-        }).catchError((_) {
-          // network error for this room -> assume free (no change)
-        }));
-      }
+        } catch (e) {
+          // network error → skip this room
+          debugPrint('⚠️ Failed to fetch status for room $id: $e');
+        }
+      }).toList();
 
-      await Future.wait(futures);
+      // รอทุก future ให้เสร็จ
+      await Future.wait(futures).timeout(const Duration(seconds: 10), onTimeout: () {
+        debugPrint('⏰ Timeout while fetching room statuses');
+        return futures.map((_) => null).toList();
+      });
 
-      // final counts (free is derived)
+      // ===== 4️⃣ คำนวณสรุป =====
       int free = totalPossibleSlots - reserved - pending;
       if (free < 0) free = 0;
 
-      if (mounted) {
-        setState(() {
-          totalReserved = reserved;
-          totalPending = pending;
-          totalFree = free;
-          loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => loading = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+      // ===== 5️⃣ อัปเดต state =====
+      if (!mounted) return;
+      setState(() {
+        totalReserved = reserved;
+        totalPending = pending;
+        totalFree = free;
+        loading = false;
+      });
+    } on ApiUnauthorized {
+      if (!mounted) return;
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Session expired. Please log in again.')),
+      );
+      // TODO: redirect ไปหน้า login
+    } catch (e, st) {
+      debugPrint('❌ Dashboard load error: $e\n$st');
+      if (!mounted) return;
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading dashboard: $e')),
+      );
     }
   }
 
