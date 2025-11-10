@@ -262,13 +262,30 @@ class _StaffHomePageState extends State<StaffHomePage>
     }
   }
 
-  // ---------------- Room Card ---------------- //
+    // ---------------- Room Card ---------------- //
   Widget _roomCard(Map r, int index) {
     final img = r['image'];
-    final status = (r['status'] ?? 'unknown').toString();
+    final rawStatus = (r['status'] ?? 'unknown').toString();
     final editable = _isEditable(r);
-    final isDisabled = status.toLowerCase() == 'disabled';
-    final color = _statusColor(isDisabled ? 'disabled' : status);
+    final isDisabled = rawStatus == 'disabled';
+
+    // Determine badge label & color
+    String badgeLabel;
+    Color badgeColor;
+
+    if (rawStatus == 'Approved') {
+      badgeLabel = 'RESERVED';
+      badgeColor = Colors.red;
+    } else if (rawStatus == 'Pending') {
+      badgeLabel = 'PENDING';
+      badgeColor = Colors.orange;
+    } else if (isDisabled) {
+      badgeLabel = 'DISABLED';
+      badgeColor = Colors.grey;
+    } else {
+      badgeLabel = 'FREE';
+      badgeColor = Colors.green;
+    }
 
     return FadeTransition(
       opacity: CurvedAnimation(
@@ -298,10 +315,17 @@ class _StaffHomePageState extends State<StaffHomePage>
               right: 10,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 child: Text(
-                  isDisabled ? 'DISABLED' : status.toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  badgeLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
@@ -322,7 +346,7 @@ class _StaffHomePageState extends State<StaffHomePage>
                       Row(
                         children: [
                           Switch(
-                            value: !isDisabled,
+                            value: rawStatus != 'disabled',
                             onChanged: editable ? (v) => _toggleStatus(r['id'], v) : null,
                           ),
                           IconButton(
@@ -341,6 +365,7 @@ class _StaffHomePageState extends State<StaffHomePage>
       ),
     );
   }
+
 
   // ---------------- Snack Helper ---------------- //
   void _showSnack(String msg) {
