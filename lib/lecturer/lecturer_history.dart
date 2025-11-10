@@ -277,7 +277,7 @@ class _BookingCard extends StatelessWidget {
       case BookingStatus.pending:
         return 'Pending';
       case BookingStatus.disabled:
-        return 'Room Closed';
+        return 'Rejected';
     }
   }
 
