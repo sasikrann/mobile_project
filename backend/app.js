@@ -339,8 +339,8 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-
+    const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    //const nowStr = `13:00:00`;
     const expiredByDate = [];
     const expiredByTime = [];
 
@@ -419,7 +419,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
   });
 });
 
-// ====================== Lecturer API ==========================
+// ====================== Lecturer API ========================== //
 app.get('/api/lecturer/requests', verifyToken, (req, res) => {
   if (req.user.role !== 'lecturer')
     return res.status(403).json({ message: 'Forbidden' });

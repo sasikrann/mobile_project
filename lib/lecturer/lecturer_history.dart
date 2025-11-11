@@ -5,10 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 
 class LecturerHistoryBookingPage extends StatefulWidget {
-  const LecturerHistoryBookingPage({
-    super.key,
-    this.bottomOverlapPadding,
-  });
+  const LecturerHistoryBookingPage({super.key, this.bottomOverlapPadding});
 
   final double? bottomOverlapPadding;
 
@@ -17,8 +14,8 @@ class LecturerHistoryBookingPage extends StatefulWidget {
       _LecturerHistoryBookingPageState();
 }
 
-class _LecturerHistoryBookingPageState
-    extends State<LecturerHistoryBookingPage> with SingleTickerProviderStateMixin {
+class _LecturerHistoryBookingPageState extends State<LecturerHistoryBookingPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   // ✅ ใช้ข้อมูลจากหลังบ้านแทน mock
@@ -87,11 +84,7 @@ class _LecturerHistoryBookingPageState
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFFF8F0),
-              Color(0xFFFEF3E2),
-              Color(0xFFFCE8CD),
-            ],
+            colors: [Color(0xFFFFF8F0), Color(0xFFFEF3E2), Color(0xFFFCE8CD)],
             stops: [0.0, 0.5, 1.0],
           ),
         ),
@@ -103,15 +96,16 @@ class _LecturerHistoryBookingPageState
               FadeTransition(
                 opacity: _controller,
                 child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, -0.3),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _controller,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
+                  position:
+                      Tween<Offset>(
+                        begin: const Offset(0, -0.3),
+                        end: Offset.zero,
+                      ).animate(
+                        CurvedAnimation(
+                          parent: _controller,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      ),
                   child: Container(
                     margin: const EdgeInsets.all(20.0),
                     padding: const EdgeInsets.all(24.0),
@@ -126,14 +120,14 @@ class _LecturerHistoryBookingPageState
                       ),
                       borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color:
-                            const Color(0xFFE5D5C3).withValues(alpha: 0.5),
+                        color: const Color(0xFFE5D5C3).withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              const Color(0xFFD4A574).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFFD4A574,
+                          ).withValues(alpha: 0.15),
                           blurRadius: 24,
                           offset: const Offset(0, 8),
                           spreadRadius: -4,
@@ -153,16 +147,14 @@ class _LecturerHistoryBookingPageState
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFFFFB547),
-                                Color(0xFFFF8A00),
-                              ],
+                              colors: [Color(0xFFFFB547), Color(0xFFFF8A00)],
                             ),
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF8A00)
-                                    .withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFFFF8A00,
+                                ).withValues(alpha: 0.3),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),
@@ -224,28 +216,25 @@ class _LecturerHistoryBookingPageState
               // Booking List
               Expanded(
                 child: _loading
-                    ? const Center(
-                        child: CircularProgressIndicator(),
-                      )
+                    ? const Center(child: CircularProgressIndicator())
                     : bookings.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No booking history',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.brown.shade600,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding:
-                                EdgeInsets.fromLTRB(20, 0, 20, bottomPad),
-                            itemCount: bookings.length,
-                            itemBuilder: (context, index) {
-                              return _BookingCard(booking: bookings[index]);
-                            },
+                    ? Center(
+                        child: Text(
+                          'No booking history',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.brown.shade600,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.fromLTRB(20, 0, 20, bottomPad),
+                        itemCount: bookings.length,
+                        itemBuilder: (context, index) {
+                          return _BookingCard(booking: bookings[index]);
+                        },
+                      ),
               ),
             ],
           ),
@@ -288,7 +277,7 @@ class _BookingCard extends StatelessWidget {
       case BookingStatus.pending:
         return 'Pending';
       case BookingStatus.disabled:
-        return 'Room Closed';
+        return 'Rejected';
     }
   }
 
@@ -364,8 +353,10 @@ class _BookingCard extends StatelessWidget {
                     ],
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: _statusBgColor,
                       borderRadius: BorderRadius.circular(14),
@@ -447,8 +438,9 @@ class _BookingCard extends StatelessWidget {
                               color: const Color(0xFFE0E4F7),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF5D6CC4)
-                                    .withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFF5D6CC4,
+                                ).withValues(alpha: 0.3),
                                 width: 1.5,
                               ),
                             ),
@@ -481,8 +473,9 @@ class _BookingCard extends StatelessWidget {
                             color: const Color(0xFFE0E4F7),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF5D6CC4)
-                                  .withValues(alpha: 0.3),
+                              color: const Color(
+                                0xFF5D6CC4,
+                              ).withValues(alpha: 0.3),
                               width: 1.5,
                             ),
                           ),
@@ -534,13 +527,25 @@ class BookingData {
   });
 
   // ✅ แปลง JSON จากหลังบ้าน -> BookingData
+  // ✅ แปลง JSON จากหลังบ้าน -> BookingData พร้อม format เวลาแบบไทย
   factory BookingData.fromJson(Map<String, dynamic> json) {
+    String fmt(dynamic raw) {
+      final s = (raw ?? '').toString();
+      if (!s.contains('-')) return s;
+      pad(x) => x.contains(':') ? x : '${x.padLeft(2, '0')}:00';
+      final p = s.split('-');
+      return '${pad(p[0].trim())} - ${pad(p[1].trim())}';
+    }
+
     return BookingData(
       roomNumber: (json['room_name'] ?? json['room'] ?? '').toString(),
       date: (json['booking_date'] ?? json['date'] ?? '') as String,
-      time: (json['time_slot'] ?? json['time'] ?? '') as String,
+      time: fmt(json['time_slot'] ?? json['time']),
       bookedBy:
-          (json['booked_by'] ?? json['lecturer_name'] ?? json['student_name'] ?? '')
+          (json['booked_by'] ??
+                  json['lecturer_name'] ??
+                  json['student_name'] ??
+                  '')
               as String,
       status: _parseStatus(json['status']),
     );

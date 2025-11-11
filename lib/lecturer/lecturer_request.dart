@@ -89,13 +89,19 @@ class Booking {
     }
 
     TimeOfDay parseTime(String t) {
-      final p = t.split(':');
-      if (p.length >= 2) {
+      final trimmed = t.trim();
+
+      // ✅ ถ้ามี ":" ปกติ เช่น "08:00" หรือ "13:30"
+      if (trimmed.contains(':')) {
+        final p = trimmed.split(':');
         final h = int.tryParse(p[0]) ?? 0;
         final m = int.tryParse(p[1]) ?? 0;
         return TimeOfDay(hour: h, minute: m);
       }
-      return const TimeOfDay(hour: 0, minute: 0);
+
+      // ✅ ถ้าเป็นตัวเลขล้วน เช่น "8" หรือ "13" จาก "8-10", "13-15"
+      final h = int.tryParse(trimmed) ?? 0;
+      return TimeOfDay(hour: h, minute: 0);
     }
 
     final start = parseTime(startStr);
@@ -485,7 +491,14 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
 
   Widget _bookingCard(Booking b) {
     final dateStr = _formatDate(b.date);
-    final timeStr = '${b.start.format(context)} - ${b.end.format(context)}';
+
+    String formatThaiTime(TimeOfDay t) {
+      final hh = t.hour.toString().padLeft(2, '0');
+      final mm = t.minute.toString().padLeft(2, '0');
+      return '$hh:$mm';
+    }
+    final timeStr = '${formatThaiTime(b.start)} - ${formatThaiTime(b.end)}';
+
     final animation = CurvedAnimation(
       parent: _animController,
       curve: const Interval(0.2, 0.7, curve: Curves.easeOut),
