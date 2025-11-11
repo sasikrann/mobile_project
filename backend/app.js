@@ -3,7 +3,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const db = require('./db'); 
+const db = require('./db');
 const app = express();
 const port = 3000;
 const path = require('path');
@@ -12,8 +12,8 @@ const multer = require('multer');
 
 //---------------Middleware-------------------------------/
 app.use(cors({
-  origin: '*', 
-  methods: ['GET', 'POST','PUT', 'PATCH'],
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
@@ -104,7 +104,7 @@ function verifyToken(req, res, next) {
 //----------------- User Info ---------------------------/
 
 app.get('/api/user/:id', verifyToken, (req, res) => {
-  const id  = req.params.id;
+  const id = req.params.id;
   const sql = 'SELECT id, name, role FROM users WHERE id = ?';
 
   db.query(sql, [id], (err, result) => {
@@ -170,7 +170,7 @@ app.get('/api/rooms', (req, res) => {
       }
 
       const SLOT_ENDS = {
-        '8-10':  '10:00:00',
+        '8-10': '10:00:00',
         '10-12': '12:00:00',
         '13-15': '15:00:00',
         '15-17': '17:00:00',
@@ -210,6 +210,7 @@ app.get('/api/rooms', (req, res) => {
         const derived = allTaken ? 'Reserved' : 'Free';
         return { ...r, status: derived };
       });
+
 
       res.status(200).json({
         message: 'Fetched all rooms successfully',
@@ -330,7 +331,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     }
 
     const SLOT_ENDS = {
-      '8-10':  '10:00:00',
+      '8-10': '10:00:00',
       '10-12': '12:00:00',
       '13-15': '15:00:00',
       '15-17': '17:00:00',
@@ -338,7 +339,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
     const expiredByDate = [];
     const expiredByTime = [];

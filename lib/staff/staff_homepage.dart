@@ -311,11 +311,8 @@ class _StaffHomePageState extends State<StaffHomePage>
     Color badgeColor;
 
     if (rawStatus == 'reserved' || rawStatus == 'approved') {
-      badgeLabel = 'RESERVED';
+      badgeLabel = 'RESERVED / PENDING';
       badgeColor = Colors.red;
-    } else if (rawStatus == 'pending') {
-      badgeLabel = 'PENDING';
-      badgeColor = const Color.fromARGB(255, 58, 14, 97);
     } else if (isDisabled) {
       badgeLabel = 'DISABLED';
       badgeColor = Colors.grey;
