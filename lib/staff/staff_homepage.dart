@@ -8,6 +8,7 @@ import '../../services/api_client.dart';
 import '../../services/upload_service.dart';
 import 'package:http/http.dart' as http;
 
+
 class StaffHomePage extends StatefulWidget {
   const StaffHomePage({super.key});
 
@@ -28,9 +29,21 @@ class _StaffHomePageState extends State<StaffHomePage>
   @override
   void initState() {
     super.initState();
-    _animController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
     fetchRooms();
+    _startAutoRefresh(); // auto refresh every 1 minute for badges
+  }
+
+  void _startAutoRefresh() {
+    Future.delayed(Duration.zero, () async {
+      while (mounted) {
+        await Future.delayed(const Duration(minutes: 1));
+        await fetchRooms();
+      }
+    });
   }
 
   @override
@@ -65,7 +78,6 @@ class _StaffHomePageState extends State<StaffHomePage>
   void _applyFilters() {
     List<dynamic> temp = rooms;
 
-    // Search by name or description
     if (searchQuery.isNotEmpty) {
       temp = temp
           .where((r) =>
@@ -80,7 +92,6 @@ class _StaffHomePageState extends State<StaffHomePage>
           .toList();
     }
 
-    // Filter by status
     if (filter == 'available') {
       temp = temp
           .where((r) =>
@@ -110,8 +121,20 @@ class _StaffHomePageState extends State<StaffHomePage>
         headers: headers,
         body: jsonEncode({'status': enable ? 'available' : 'disabled'}),
       );
-      await fetchRooms();
-      if (res.statusCode != 200) {
+
+      if (res.statusCode == 200) {
+        // ✅ Update UI immediately
+        setState(() {
+          rooms = rooms.map((room) {
+            if (room['id'] == id) {
+              room['status'] = enable ? 'available' : 'disabled';
+            }
+            return room;
+          }).toList();
+          _applyFilters();
+        });
+        _showSnack('Room status updated');
+      } else {
         final body = jsonDecode(res.body);
         _showSnack(body['message'] ?? 'Toggle failed');
       }
@@ -125,7 +148,8 @@ class _StaffHomePageState extends State<StaffHomePage>
     final editable = room == null ? true : _isEditable(room);
     final nameCtrl = TextEditingController(text: room?['name'] ?? '');
     final descCtrl = TextEditingController(text: room?['description'] ?? '');
-    final capCtrl = TextEditingController(text: room?['capacity']?.toString() ?? '');
+    final capCtrl =
+        TextEditingController(text: room?['capacity']?.toString() ?? '');
     File? imageFile;
     final picker = ImagePicker();
 
@@ -135,14 +159,16 @@ class _StaffHomePageState extends State<StaffHomePage>
         return StatefulBuilder(builder: (ctx2, setState2) {
           Widget imgPreview() {
             if (imageFile != null) {
-              return Image.file(imageFile!, width: 220, height: 140, fit: BoxFit.cover);
+              return Image.file(imageFile!,
+                  width: 220, height: 140, fit: BoxFit.cover);
             } else if ((room?['image'] ?? '').toString().isNotEmpty) {
               return Image.network(
                 room!['image'],
                 width: 220,
                 height: 140,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 60),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image, size: 60),
               );
             } else {
               return Container(
@@ -176,22 +202,35 @@ class _StaffHomePageState extends State<StaffHomePage>
                     label: const Text('Pick image'),
                   ),
                   const SizedBox(height: 8),
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
-                  TextField(controller: capCtrl, decoration: const InputDecoration(labelText: 'Capacity'), keyboardType: TextInputType.number),
+                  TextField(
+                      controller: nameCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Name')),
+                  TextField(
+                      controller: descCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Description')),
+                  TextField(
+                      controller: capCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Capacity'),
+                      keyboardType: TextInputType.number),
                   if (!editable)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: Text(
                         'Cannot edit — room is Pending or Reserved',
-                        style: TextStyle(color: Colors.red[700], fontSize: 13),
+                        style:
+                            TextStyle(color: Colors.red[700], fontSize: 13),
                       ),
                     ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel')),
               ElevatedButton(
                 onPressed: () async {
                   final name = nameCtrl.text.trim();
@@ -245,38 +284,23 @@ class _StaffHomePageState extends State<StaffHomePage>
     );
   }
 
-  // ---------------- Badge Colors ---------------- //
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'reserved':
-        return const Color.fromARGB(255, 244, 124, 54);
-      case 'pending':
-        return const Color.fromARGB(255, 112, 67, 218);
-      case 'free':
-      case 'available':
-        return Colors.green;
-      case 'disabled':
-        return Colors.grey;
-      default:
-        return Colors.blueGrey;
-    }
-  }
 
-    // ---------------- Room Card ---------------- //
+
+  // ---------------- Room Card ---------------- //
   Widget _roomCard(Map r, int index) {
     final img = r['image'];
-    final rawStatus = (r['status'] ?? 'unknown').toString();
+    final rawStatus = (r['status'] ?? 'unknown').toString().toLowerCase();
     final editable = _isEditable(r);
     final isDisabled = rawStatus == 'disabled';
 
-    // Determine badge label & color
+    // Dynamic badge — auto reflect time slot + DB status
     String badgeLabel;
     Color badgeColor;
 
-    if (rawStatus == 'Approved') {
+    if (rawStatus == 'reserved' || rawStatus == 'approved') {
       badgeLabel = 'RESERVED';
       badgeColor = Colors.red;
-    } else if (rawStatus == 'Pending') {
+    } else if (rawStatus == 'pending') {
       badgeLabel = 'PENDING';
       badgeColor = Colors.orange;
     } else if (isDisabled) {
@@ -300,13 +324,16 @@ class _StaffHomePageState extends State<StaffHomePage>
           children: [
             // Image
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
               child: (img != null && img.toString().isNotEmpty)
-                  ? Image.network(img, height: 150, width: double.infinity, fit: BoxFit.cover)
+                  ? Image.network(img,
+                      height: 150, width: double.infinity, fit: BoxFit.cover)
                   : Container(
                       height: 150,
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image, size: 70, color: Colors.grey),
+                      child: const Icon(Icons.image,
+                          size: 70, color: Colors.grey),
                     ),
             ),
             // Badge
@@ -314,7 +341,8 @@ class _StaffHomePageState extends State<StaffHomePage>
               top: 10,
               right: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: badgeColor,
                   borderRadius: BorderRadius.circular(20),
@@ -331,23 +359,29 @@ class _StaffHomePageState extends State<StaffHomePage>
             ),
             // Info
             Padding(
-              padding: const EdgeInsets.only(top: 155.0, left: 12, right: 12, bottom: 10),
+              padding: const EdgeInsets.only(
+                  top: 155.0, left: 12, right: 12, bottom: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(r['name'] ?? '-', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(r['name'] ?? '-',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(r['description'] ?? '-', maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(r['description'] ?? '-',
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Capacity: ${r['capacity'] ?? '-'}', style: const TextStyle(fontSize: 14)),
+                      Text('Capacity: ${r['capacity'] ?? '-'}',
+                          style: const TextStyle(fontSize: 14)),
                       Row(
                         children: [
                           Switch(
-                            value: rawStatus != 'disabled',
-                            onChanged: editable ? (v) => _toggleStatus(r['id'], v) : null,
+                            value: !isDisabled,
+                            onChanged:
+                                editable ? (v) => _toggleStatus(r['id'], v) : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.edit),
@@ -366,11 +400,11 @@ class _StaffHomePageState extends State<StaffHomePage>
     );
   }
 
-
   // ---------------- Snack Helper ---------------- //
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ---------------- Build ---------------- //
@@ -381,7 +415,6 @@ class _StaffHomePageState extends State<StaffHomePage>
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Search bar
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 30, 12, 6),
                   child: TextField(
@@ -401,7 +434,6 @@ class _StaffHomePageState extends State<StaffHomePage>
                     },
                   ),
                 ),
-                // Filter buttons
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
