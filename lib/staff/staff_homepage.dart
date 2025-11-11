@@ -8,7 +8,6 @@ import '../../services/api_client.dart';
 import '../../services/upload_service.dart';
 import 'package:http/http.dart' as http;
 
-
 class StaffHomePage extends StatefulWidget {
   const StaffHomePage({super.key});
 
@@ -80,27 +79,29 @@ class _StaffHomePageState extends State<StaffHomePage>
 
     if (searchQuery.isNotEmpty) {
       temp = temp
-          .where((r) =>
-              (r['name'] ?? '')
-                  .toString()
-                  .toLowerCase()
-                  .contains(searchQuery.toLowerCase()) ||
-              (r['description'] ?? '')
-                  .toString()
-                  .toLowerCase()
-                  .contains(searchQuery.toLowerCase()))
+          .where(
+            (r) =>
+                (r['name'] ?? '').toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ) ||
+                (r['description'] ?? '').toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ),
+          )
           .toList();
     }
 
     if (filter == 'available') {
       temp = temp
-          .where((r) =>
-              (r['status'] ?? '').toString().toLowerCase() != 'disabled')
+          .where(
+            (r) => (r['status'] ?? '').toString().toLowerCase() != 'disabled',
+          )
           .toList();
     } else if (filter == 'disabled') {
       temp = temp
-          .where((r) =>
-              (r['status'] ?? '').toString().toLowerCase() == 'disabled')
+          .where(
+            (r) => (r['status'] ?? '').toString().toLowerCase() == 'disabled',
+          )
           .toList();
     }
 
@@ -148,143 +149,155 @@ class _StaffHomePageState extends State<StaffHomePage>
     final editable = room == null ? true : _isEditable(room);
     final nameCtrl = TextEditingController(text: room?['name'] ?? '');
     final descCtrl = TextEditingController(text: room?['description'] ?? '');
-    final capCtrl =
-        TextEditingController(text: room?['capacity']?.toString() ?? '');
+    final capCtrl = TextEditingController(
+      text: room?['capacity']?.toString() ?? '',
+    );
     File? imageFile;
     final picker = ImagePicker();
 
     await showDialog(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(builder: (ctx2, setState2) {
-          Widget imgPreview() {
-            if (imageFile != null) {
-              return Image.file(imageFile!,
-                  width: 220, height: 140, fit: BoxFit.cover);
-            } else if ((room?['image'] ?? '').toString().isNotEmpty) {
-              return Image.network(
-                room!['image'],
-                width: 220,
-                height: 140,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.broken_image, size: 60),
-              );
-            } else {
-              return Container(
-                width: 220,
-                height: 140,
-                color: Colors.grey[300],
-                child: const Icon(Icons.image, size: 60),
-              );
+        return StatefulBuilder(
+          builder: (ctx2, setState2) {
+            Widget imgPreview() {
+              if (imageFile != null) {
+                return Image.file(
+                  imageFile!,
+                  width: 220,
+                  height: 140,
+                  fit: BoxFit.cover,
+                );
+              } else if ((room?['image'] ?? '').toString().isNotEmpty) {
+                return Image.network(
+                  room!['image'],
+                  width: 220,
+                  height: 140,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.broken_image, size: 60),
+                );
+              } else {
+                return Container(
+                  width: 220,
+                  height: 140,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image, size: 60),
+                );
+              }
             }
-          }
 
-          return AlertDialog(
-            title: Text(room == null ? 'Add New Room' : 'Edit Room'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  imgPreview(),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: editable
-                        ? () async {
-                            final picked = await picker.pickImage(
-                                source: ImageSource.gallery, imageQuality: 80);
-                            if (picked != null) {
-                              setState2(() => imageFile = File(picked.path));
+            return AlertDialog(
+              title: Text(room == null ? 'Add New Room' : 'Edit Room'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    imgPreview(),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: editable
+                          ? () async {
+                              final picked = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                imageQuality: 80,
+                              );
+                              if (picked != null) {
+                                setState2(() => imageFile = File(picked.path));
+                              }
                             }
-                          }
-                        : null,
-                    icon: const Icon(Icons.photo),
-                    label: const Text('Pick image'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
+                          : null,
+                      icon: const Icon(Icons.photo),
+                      label: const Text('Pick image'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
                       controller: nameCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Name')),
-                  TextField(
+                      decoration: const InputDecoration(labelText: 'Name'),
+                    ),
+                    TextField(
                       controller: descCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Description')),
-                  TextField(
-                      controller: capCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Capacity'),
-                      keyboardType: TextInputType.number),
-                  if (!editable)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Cannot edit — room is Pending or Reserved',
-                        style:
-                            TextStyle(color: Colors.red[700], fontSize: 13),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
                       ),
                     ),
-                ],
+                    TextField(
+                      controller: capCtrl,
+                      decoration: const InputDecoration(labelText: 'Capacity'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    if (!editable)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Cannot edit — room is Pending or Reserved',
+                          style: TextStyle(
+                            color: Colors.red[700],
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
+              actions: [
+                TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  final name = nameCtrl.text.trim();
-                  final cap = int.tryParse(capCtrl.text.trim()) ?? 4;
-                  if (name.isEmpty) {
-                    _showSnack('Name required');
-                    return;
-                  }
-
-                  if (room == null) {
-                    final res = await UploadService.createRoom(
-                      name: name,
-                      description: descCtrl.text.trim(),
-                      capacity: cap,
-                      imageFile: imageFile,
-                    );
-                    if (res['statusCode'] == 201) {
-                      Navigator.pop(ctx);
-                      await fetchRooms();
-                      _showSnack('Room created');
-                    } else {
-                      _showSnack('Create failed: ${res['body']}');
-                    }
-                  } else {
-                    if (!editable) {
-                      _showSnack('Room is Reserved/Pending');
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    final cap = int.tryParse(capCtrl.text.trim()) ?? 4;
+                    if (name.isEmpty) {
+                      _showSnack('Name required');
                       return;
                     }
-                    final res = await UploadService.updateRoom(
-                      roomId: room['id'],
-                      name: name,
-                      description: descCtrl.text.trim(),
-                      capacity: cap,
-                      imageFile: imageFile,
-                    );
-                    if (res['statusCode'] == 200) {
-                      Navigator.pop(ctx);
-                      await fetchRooms();
-                      _showSnack('Room updated');
+
+                    if (room == null) {
+                      final res = await UploadService.createRoom(
+                        name: name,
+                        description: descCtrl.text.trim(),
+                        capacity: cap,
+                        imageFile: imageFile,
+                      );
+                      if (res['statusCode'] == 201) {
+                        Navigator.pop(ctx);
+                        await fetchRooms();
+                        _showSnack('Room created');
+                      } else {
+                        _showSnack('Create failed: ${res['body']}');
+                      }
                     } else {
-                      _showSnack('Update failed: ${res['body']}');
+                      if (!editable) {
+                        _showSnack('Room is Reserved/Pending');
+                        return;
+                      }
+                      final res = await UploadService.updateRoom(
+                        roomId: room['id'],
+                        name: name,
+                        description: descCtrl.text.trim(),
+                        capacity: cap,
+                        imageFile: imageFile,
+                      );
+                      if (res['statusCode'] == 200) {
+                        Navigator.pop(ctx);
+                        await fetchRooms();
+                        _showSnack('Room updated');
+                      } else {
+                        _showSnack('Update failed: ${res['body']}');
+                      }
                     }
-                  }
-                },
-                child: Text(room == null ? 'Create' : 'Save'),
-              ),
-            ],
-          );
-        });
+                  },
+                  child: Text(room == null ? 'Create' : 'Save'),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }
-
-
 
   // ---------------- Room Card ---------------- //
   Widget _roomCard(Map r, int index) {
@@ -302,7 +315,7 @@ class _StaffHomePageState extends State<StaffHomePage>
       badgeColor = Colors.red;
     } else if (rawStatus == 'pending') {
       badgeLabel = 'PENDING';
-      badgeColor = Colors.orange;
+      badgeColor = const Color.fromARGB(255, 58, 14, 97);
     } else if (isDisabled) {
       badgeLabel = 'DISABLED';
       badgeColor = Colors.grey;
@@ -317,6 +330,7 @@ class _StaffHomePageState extends State<StaffHomePage>
         curve: Interval((index / filteredRooms.length).clamp(0.0, 1.0), 1.0),
       ),
       child: Card(
+        color: const Color(0xFFFEF3E2),
         elevation: 3,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -324,16 +338,25 @@ class _StaffHomePageState extends State<StaffHomePage>
           children: [
             // Image
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
               child: (img != null && img.toString().isNotEmpty)
-                  ? Image.network(img,
-                      height: 150, width: double.infinity, fit: BoxFit.cover)
+                  ? Image.network(
+                      img,
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    )
                   : Container(
                       height: 150,
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image,
-                          size: 70, color: Colors.grey),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.image,
+                        size: 56,
+                        color: Colors.grey,
+                      ),
                     ),
             ),
             // Badge
@@ -341,8 +364,10 @@ class _StaffHomePageState extends State<StaffHomePage>
               top: 10,
               right: 10,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeColor,
                   borderRadius: BorderRadius.circular(20),
@@ -360,31 +385,60 @@ class _StaffHomePageState extends State<StaffHomePage>
             // Info
             Padding(
               padding: const EdgeInsets.only(
-                  top: 155.0, left: 12, right: 12, bottom: 10),
+                top: 155.0,
+                left: 12,
+                right: 12,
+                bottom: 10,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(r['name'] ?? '-',
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    r['name'] ?? '-',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(r['description'] ?? '-',
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    r['description'] ?? '-',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Capacity: ${r['capacity'] ?? '-'}',
-                          style: const TextStyle(fontSize: 14)),
+                      Text(
+                        'Seat: ${r['capacity'] ?? '-'}',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                      ),
                       Row(
                         children: [
                           Switch(
                             value: !isDisabled,
-                            onChanged:
-                                editable ? (v) => _toggleStatus(r['id'], v) : null,
+                            activeColor: Colors.green,
+                            onChanged: editable
+                                ? (v) => _toggleStatus(r['id'], v)
+                                : null,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.edit),
+                            icon: const Icon(
+                              Icons.edit,
+                              color: Color(0xFFDD0303),
+                              shadows: [
+                                Shadow(
+                                  color: Colors
+                                      .black38, // Shadow color and opacity
+                                  offset: const Offset(
+                                    3,
+                                    3,
+                                  ), // Shadow offset (x, y)
+                                  blurRadius: 5.0, // Shadow blur radius
+                                ),
+                              ],
+                            ),
                             onPressed: () => _openDialog(room: r),
                           ),
                         ],
@@ -403,14 +457,14 @@ class _StaffHomePageState extends State<StaffHomePage>
   // ---------------- Snack Helper ---------------- //
   void _showSnack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ---------------- Build ---------------- //
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFEF3E2),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -422,9 +476,9 @@ class _StaffHomePageState extends State<StaffHomePage>
                       hintText: 'Search rooms...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: const Color.fromARGB(255, 255, 255, 255),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -445,6 +499,12 @@ class _StaffHomePageState extends State<StaffHomePage>
                     ],
                   ),
                 ),
+                 FloatingActionButton(
+                  onPressed: _openDialog,
+                  backgroundColor: const Color(0xFFDD0303),
+                  child: const Icon(Icons.add,color: Colors.white,),
+                ),
+               
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: fetchRooms,
@@ -458,13 +518,9 @@ class _StaffHomePageState extends State<StaffHomePage>
                           ),
                   ),
                 ),
+                  
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openDialog(),
-        label: const Text('Add Room'),
-        icon: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -472,6 +528,7 @@ class _StaffHomePageState extends State<StaffHomePage>
     return Row(
       children: [
         Radio<String>(
+          activeColor: const Color(0xFFDD0303),
           value: value,
           groupValue: filter,
           onChanged: (v) {
