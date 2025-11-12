@@ -322,6 +322,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     WHERE b.user_id = ?
     ORDER BY b.created_at DESC, b.id DESC
   `;
+  // AND DATE(b.booking_date) = CURDATE()
 
   db.query(baseSql, [userId], (err, rows) => {
     if (err) return res.status(500).json({ message: 'Database error' });
