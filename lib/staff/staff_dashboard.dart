@@ -72,7 +72,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
       // ===== 2️⃣ แยกห้องที่ปิดออก =====
       final closedRooms = rooms.where((r) {
         final status = (r['status'] ?? '').toString().toLowerCase();
-        return status == 'closed';
+         return status == 'disabled' || status == 'closed';
       }).toList();
 
       totalClosedRooms = closedRooms.length;
