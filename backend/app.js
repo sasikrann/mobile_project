@@ -310,7 +310,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     SELECT 
       b.id            AS booking_id,
       r.name          AS room_name,
-      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,   -- yyyy-mm-dd
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,
       b.time_slot     AS time_slot,      
       b.status        AS status,         
       b.reason        AS reason,          
@@ -320,6 +320,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     JOIN rooms r         ON r.id = b.room_id
     LEFT JOIN users appr ON appr.id = b.approver_id
     WHERE b.user_id = ?
+         AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC, b.id DESC
   `;
 
@@ -330,40 +331,35 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: [] });
     }
 
-    // เวลา cutoff ของแต่ละสล็อต
     const SLOT_ENDS = {
-      '8-10':  '10:00:00',
+      '8-10': '10:00:00',
       '10-12': '12:00:00',
       '13-15': '15:00:00',
       '15-17': '17:00:00',
     };
 
-    // ตรวจสอบรายการที่ยัง Pending แต่หมดอายุ
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
     //const nowStr = `13:00:00`;
-
-    const expiredByDate = []; // ข้ามวัน
-    const expiredByTime = []; // วันเดียวกันแต่เวลาสล็อตหมด
+    const expiredByDate = [];
+    const expiredByTime = [];
 
     for (const b of rows) {
       if (b.status !== 'Pending') continue;
 
-      const bookingDate = new Date(b.booking_date); // 'yyyy-mm-dd'
+      const bookingDate = new Date(b.booking_date);
       const bookingOnly = new Date(
         bookingDate.getFullYear(),
         bookingDate.getMonth(),
         bookingDate.getDate()
       );
 
-      // เคสข้ามวัน
       if (bookingOnly < todayOnly) {
         expiredByDate.push(b.booking_id);
         continue;
       }
 
-      // เคสวันนี้แต่เวลาสล็อตหมด
       if (bookingOnly.getTime() === todayOnly.getTime()) {
         const endTime = SLOT_ENDS[b.time_slot];
         if (endTime && nowStr >= endTime) {
@@ -376,7 +372,6 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: rows });
     }
 
-    // อัปเดตทีละชุดตามเหตุผล
     const updateDateSql = `
       UPDATE bookings
       SET status = 'Cancelled',
@@ -394,7 +389,6 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     const doUpdateTime = () => {
       if (expiredByTime.length === 0) {
-        // ดึงข้อมูลใหม่หลังอัปเดตให้ตรงกับ DB
         return db.query(baseSql, [userId], (err3, newRows) => {
           if (err3) return res.status(500).json({ message: 'Database error' });
           res.json({ message: 'OK', bookings: newRows });
@@ -413,7 +407,6 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     };
 
     if (expiredByDate.length === 0) {
-      // ไม่มีชุด date ก็ไปอัปเดต time ต่อเลย
       return doUpdateTime();
     }
 
