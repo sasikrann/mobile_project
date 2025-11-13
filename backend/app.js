@@ -320,6 +320,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     JOIN rooms r         ON r.id = b.room_id
     LEFT JOIN users appr ON appr.id = b.approver_id
     WHERE b.user_id = ?
+         AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC, b.id DESC
   `;
 
@@ -467,20 +468,28 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
 
   const sql = `
-    SELECT b.id AS booking_id, u.name AS student_name, r.name AS room_name,
-           DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-           b.time_slot, b.status, b.reject_reason
+    SELECT 
+      b.id AS booking_id, 
+      u.name AS student_name, 
+      r.name AS room_name,
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+      b.time_slot, 
+      b.status, 
+      b.reject_reason
     FROM bookings b
     JOIN users u ON u.id = b.user_id
     JOIN rooms r ON r.id = b.room_id
-    WHERE b.status IN ('Approved','Rejected')
+    WHERE b.status IN ('Approved', 'Rejected')
+      AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC
   `;
+
   db.query(sql, (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     res.json({ message: 'OK', history: result });
   });
 });
+
 
 
 //------------------ Room Status (use on choose slot) ---------------------------/
