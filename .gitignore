@@ -45,3 +45,5 @@ app.*.map.json
 /android/app/release
 backend/node_modules
 backend/package-lock.json
+
+backend/uploads

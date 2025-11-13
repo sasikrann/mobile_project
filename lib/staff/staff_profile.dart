@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import './settingpage/profile.dart';
 import './settingpage/service.dart';
 import './settingpage/privacy.dart';
 import './settingpage/help.dart';
 import '../auth/login.dart';
+import '../services/auth_storage.dart';
+import '../services/api_client.dart';
 
 class StaffProfilePage extends StatefulWidget {
   const StaffProfilePage({super.key, this.bottomOverlapPadding});
@@ -16,9 +19,12 @@ class StaffProfilePage extends StatefulWidget {
 
 class _StaffProfilePageState extends State<StaffProfilePage>
     with SingleTickerProviderStateMixin {
+  String? _username;
+  String? _name;
+  String? _role;
+  bool _loading = true;
+
   late AnimationController _controller;
-
-
 
   @override
   void initState() {
@@ -27,12 +33,85 @@ class _StaffProfilePageState extends State<StaffProfilePage>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     )..forward();
+
+    _bootstrap();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    // 1) เติมจาก local storage ให้ UI ขึ้นไว
+    final cached = await AuthStorage.getAll();
+    final cachedId = cached['id'] as int?;
+    final cachedName = cached['name'] as String?;
+    final cachedUser = cached['username'] as String?;
+    final cachedRole = cached['role'] as String?;
+
+    if (mounted) {
+      setState(() {
+        _name = cachedName;
+        _username = cachedUser;
+        _role = cachedRole;
+        _loading = false; // ให้ UI โชว์ก่อน
+      });
+    }
+
+    // 2) ถ้ายังไม่ได้ล็อกอิน -> เด้งไป Login
+    final ok = await AuthStorage.isLoggedIn();
+    if (!ok || cachedId == null) {
+      _goLogin('No token or user info found, please log in again.');
+      return;
+    }
+
+    // 3) refresh ข้อมูลจาก backend
+    await _fetchUserFromApi(cachedId);
+  }
+
+  Future<void> _fetchUserFromApi(int userId) async {
+    try {
+      final res = await ApiClient.get('/api/user/$userId'); // แนบ token อัตโนมัติ
+      if (!mounted) return;
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        setState(() {
+          _username = data['user']['username'];
+          _name = data['user']['name'];
+          _role = data['user']['role'];
+        });
+      } else {
+        _toast('Fetch user info failed (${res.statusCode})');
+      }
+    } on ApiUnauthorized {
+      _goLogin('Session expired. Please log in again.');
+    } catch (e) {
+      if (!mounted) return;
+      _toast('Cannot connect to server: $e');
+    }
+  }
+
+  void _goLogin(String msg) async {
+    _toast(msg);
+    await AuthStorage.clear();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -92,13 +171,12 @@ class _StaffProfilePageState extends State<StaffProfilePage>
                     const SizedBox(height: 32),
 
                     // Profile Card (กดแล้วไป Edit Profile — เติมโค้ดเองที่นี่)
-                    _buildAnimatedItem(
-                      index: 0,
-                      child: _ProfileCard(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfilePage()));
-                        },
-                      ),
+                     _buildAnimatedItem(
+                            index: 0,
+                            child: _ProfileCard(
+                              name: _name,
+                              role: _role,
+                             )
                     ),
                     const SizedBox(height: 24),
 
@@ -147,14 +225,17 @@ class _StaffProfilePageState extends State<StaffProfilePage>
 
                     // Logout Button
                     _buildAnimatedItem(
-                      index: 4,
-                      child: _LogoutButton(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
-                        );
-                        }, // <<< เติม flow logout ของคุณเอง
+                            index: 4,
+                            child: _LogoutButton(
+                              onTap: () async {
+                                await AuthStorage.clear();
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const LoginPage(),
+                        ));
+                        }, 
                       ),
                     ),
                   ],
@@ -190,8 +271,15 @@ class _StaffProfilePageState extends State<StaffProfilePage>
 // ========================= วิดเจ็ตย่อย =========================
 
 class _ProfileCard extends StatefulWidget {
-  const _ProfileCard({this.onTap});
   final VoidCallback? onTap;
+  final String? name;
+  final String? role;
+
+  const _ProfileCard({
+    this.onTap,
+    this.name,
+    this.role,
+  });
 
   @override
   State<_ProfileCard> createState() => _ProfileCardState();
@@ -206,7 +294,7 @@ class _ProfileCardState extends State<_ProfileCard> {
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onTap, // เว้นไว้ให้
+      onTap: widget.onTap,
       child: AnimatedScale(
         scale: _isPressed ? 0.97 : 1.0,
         duration: const Duration(milliseconds: 150),
@@ -227,33 +315,35 @@ class _ProfileCardState extends State<_ProfileCard> {
               ),
             ],
           ),
-          child: const Padding(
-            padding: EdgeInsets.all(24.0),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Row(
               children: [
-                _CircleAvatarIcon(),
-                SizedBox(width: 16),
+                const _CircleAvatarIcon(),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'John Doe',
-                        style: TextStyle(
+                        widget.name ?? 'Unknown User',
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'Staff',
-                        style: TextStyle(fontSize: 13, color: Colors.white70),
+                        widget.role ?? 'Unknown Role',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                _LightArrow(),
               ],
             ),
           ),
@@ -262,6 +352,7 @@ class _ProfileCardState extends State<_ProfileCard> {
     );
   }
 }
+
 
 class _CircleAvatarIcon extends StatelessWidget {
   const _CircleAvatarIcon();
@@ -280,23 +371,6 @@ class _CircleAvatarIcon extends StatelessWidget {
     );
   }
 }
-
-class _LightArrow extends StatelessWidget {
-  const _LightArrow();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:0.2),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-    );
-  }
-}
-
 class _SettingMenuItem extends StatefulWidget {
   const _SettingMenuItem({
     required this.icon,

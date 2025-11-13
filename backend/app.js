@@ -2,23 +2,26 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const db = require('./db'); 
+const db = require('./db');
 const app = express();
 const port = 3000;
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
-//------------------ Login + Register ---------------------------/
+//---------------Middleware-------------------------------/
 app.use(cors({
-  origin: '*', 
-  methods: ['GET', 'POST'],
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // serve uploaded images
 const JWT_SECRET = 'super_secret_key_change_this';
 
-
+//------------------ Login + Register ---------------------------/
 app.post('/api/register', async (req, res) => {
   const { name, username, password } = req.body;
 
@@ -98,14 +101,10 @@ function verifyToken(req, res, next) {
   });
 }
 
-app.get('/api/me', verifyToken, (req, res) => {
-  res.json({ message: 'Token valid', user: req.user });
-});
-
 //----------------- User Info ---------------------------/
 
 app.get('/api/user/:id', verifyToken, (req, res) => {
-  const id  = req.params.id;
+  const id = req.params.id;
   const sql = 'SELECT id, name, role FROM users WHERE id = ?';
 
   db.query(sql, [id], (err, result) => {
@@ -125,7 +124,22 @@ app.get('/api/user/:id', verifyToken, (req, res) => {
   });
 });
 
-//------------------ Rooms (หน้าเลือกห้อง) ---------------------------/
+// Utility: check whether a room has active Pending/Approved bookings
+function checkHasActiveBookings(roomId, callback) {
+  const sql = `
+    SELECT COUNT(*) AS cnt
+    FROM bookings
+    WHERE room_id = ?
+      AND status IN ('Pending','Approved')
+  `;
+  db.query(sql, [roomId], (err, rows) => {
+    if (err) return callback(err);
+    const cnt = (rows && rows[0] && rows[0].cnt) ? rows[0].cnt : 0;
+    callback(null, cnt > 0);
+  });
+}
+
+//------------------ Rooms (list) ---------------------------/
 
 app.get('/api/rooms', (req, res) => {
   const roomsSql = 'SELECT id, name, description, capacity, status, image FROM rooms';
@@ -158,7 +172,7 @@ app.get('/api/rooms', (req, res) => {
 
       // กำหนด end-time ของแต่ละ slot (รูปแบบ HH:MM:SS)
       const SLOT_ENDS = {
-        '8-10':  '10:00:00',
+        '8-10': '10:00:00',
         '10-12': '12:00:00',
         '13-15': '15:00:00',
         '15-17': '17:00:00',
@@ -333,7 +347,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     // เวลา cutoff ของแต่ละสล็อต
     const SLOT_ENDS = {
-      '8-10':  '10:00:00',
+      '8-10': '10:00:00',
       '10-12': '12:00:00',
       '13-15': '15:00:00',
       '15-17': '17:00:00',
@@ -499,7 +513,6 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   const room_id = req.params.id;
   const user_id = req.user.id;
 
-
   const roomSql = 'SELECT * FROM rooms WHERE id = ?';
   db.query(roomSql, [room_id], (err, roomResult) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -599,7 +612,140 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
   });
 });
 
-// ให้โค้ดนี้อยู่ล่างสุดเสมอ
+// ================== Multer for Room Images ==================
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = './uploads/';
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+
+// ---------------- Add room --------------------//
+app.post('/api/rooms', verifyToken, upload.single('image'), (req, res) => {
+  if (!req.user || req.user.role !== 'staff') {
+    return res.status(403).json({ message: 'Only staff can create rooms' });
+  }
+
+  const { name, description, capacity } = req.body;
+  if (!name) return res.status(400).json({ message: 'Room name is required' });
+
+  const imageUrl = req.file
+    ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    : null;
+
+  const insertSql = 'INSERT INTO rooms (name, description, capacity, image, status) VALUES (?, ?, ?, ?, ?)';
+  const values = [
+    name,
+    description || null,
+    capacity ? parseInt(capacity, 10) : 4,
+    imageUrl,
+    'available'
+  ];
+
+  db.query(insertSql, values, (err, result) => {
+    if (err) {
+      console.error('POST /api/rooms error:', err);
+      return res.status(500).json({ message: 'Failed to create room' });
+    }
+
+    const newId = result.insertId;
+    db.query('SELECT * FROM rooms WHERE id = ?', [newId], (err2, rows) => {
+      if (err2) return res.status(500).json({ message: 'Room created but fetch failed' });
+      res.status(201).json({ message: 'Room created', room: rows[0] });
+    });
+  });
+});
+
+// --------------- Update rooms ------------------------//
+app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
+  if (!req.user || req.user.role !== 'staff')
+    return res.status(403).json({ message: 'Only staff can edit rooms' });
+
+  const roomId = req.params.id;
+
+  checkHasActiveBookings(roomId, (errCheck, hasActive) => {
+    if (errCheck) {
+      console.error('Booking check error:', errCheck);
+      return res.status(500).json({ message: 'Database error' });
+    }
+    if (hasActive) {
+      return res.status(400).json({ message: 'Cannot edit a room with active (Pending/Approved) bookings' });
+    }
+
+    const { name, description, status, capacity } = req.body;
+    const imagePath = req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null;
+
+    const fields = [];
+    const values = [];
+
+    if (name !== undefined) { fields.push('name = ?'); values.push(name); }
+    if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+    if (capacity !== undefined) { fields.push('capacity = ?'); values.push(parseInt(capacity, 10) || 4); }
+    if (imagePath) { fields.push('image = ?'); values.push(imagePath); }
+    if (status !== undefined) { fields.push('status = ?'); values.push(status || 'available'); }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ message: 'No fields provided for update' });
+    }
+
+    const sql = `UPDATE rooms SET ${fields.join(', ')} WHERE id = ?`;
+    values.push(roomId);
+
+    db.query(sql, values, err => {
+      if (err) {
+        console.error('PUT /api/rooms/:id error:', err);
+        return res.status(500).json({ message: 'Update failed' });
+      }
+      res.json({ message: 'Room updated successfully' });
+    });
+  });
+});
+
+//  PATCH Toggle open/closed -----------------------//
+app.patch('/api/rooms/:id/status', verifyToken, (req, res) => {
+  if (!req.user || req.user.role !== 'staff')
+    return res.status(403).json({ message: 'Only staff can change status' });
+
+  const roomId = req.params.id;
+  const { status } = req.body;
+
+  if (!status) return res.status(400).json({ message: 'Missing status' });
+
+  if ((status || '').toLowerCase() === 'disabled') {
+    checkHasActiveBookings(roomId, (errCheck, hasActive) => {
+      if (errCheck) {
+        console.error('Booking check error:', errCheck);
+        return res.status(500).json({ message: 'Database error' });
+      }
+      if (hasActive) {
+        return res.status(400).json({ message: 'Cannot disable a room with active (Pending/Approved) bookings' });
+      }
+
+      db.query('UPDATE rooms SET status = ? WHERE id = ?', [status, roomId], err => {
+        if (err) {
+          console.error('PATCH /api/rooms/:id/status error:', err);
+          return res.status(500).json({ message: 'Failed to update status' });
+        }
+        res.json({ message: 'Status updated successfully' });
+      });
+    });
+  } else {
+    db.query('UPDATE rooms SET status = ? WHERE id = ?', [status, roomId], err => {
+      if (err) {
+        console.error('PATCH /api/rooms/:id/status error:', err);
+        return res.status(500).json({ message: 'Failed to update status' });
+      }
+      res.json({ message: 'Status updated successfully' });
+    });
+  }
+});
+
+// Ensure this runs last
 app.listen(port, '0.0.0.0', () => {
   console.log(`API running at http://localhost:${port}`);
 });
