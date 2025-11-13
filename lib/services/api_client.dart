@@ -35,5 +35,5 @@ class ApiClient {
 class ApiUnauthorized implements Exception {
   const ApiUnauthorized();
   @override
-  String toString() => 'ApiUnauthorized';
+  String toString() => 'ApiUnauthorized/ password error.';
 }

@@ -1,4 +1,3 @@
-// app.js
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -16,6 +15,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // serve uploaded images
@@ -150,7 +150,7 @@ app.get('/api/rooms', (req, res) => {
       return res.status(500).json({ message: 'Database error' });
     }
 
-    // pull today bookings that are Pending/Approved (affecting reserved)
+    // ดึง bookings วันนี้ที่มีผลต่อการ "กันคิว"
     const bookingsSql = `
       SELECT room_id, time_slot, status
       FROM bookings
@@ -163,12 +163,14 @@ app.get('/api/rooms', (req, res) => {
         return res.status(500).json({ message: 'Database error' });
       }
 
-      const byRoom = new Map();
+      // map bookings ตามห้อง
+      const byRoom = new Map(); // room_id -> [{time_slot, status}, ...]
       for (const b of bookings) {
         if (!byRoom.has(b.room_id)) byRoom.set(b.room_id, []);
         byRoom.get(b.room_id).push({ time_slot: b.time_slot, status: b.status });
       }
 
+      // กำหนด end-time ของแต่ละ slot (รูปแบบ HH:MM:SS)
       const SLOT_ENDS = {
         '8-10': '10:00:00',
         '10-12': '12:00:00',
@@ -177,11 +179,13 @@ app.get('/api/rooms', (req, res) => {
       };
       const ALL_SLOTS = Object.keys(SLOT_ENDS);
 
+      // เวลาปัจจุบันของ server (ใช้ MySQL CURRENT_TIME() ก็ได้ แต่ทำใน JS ให้ชัดเจน)
       const now = new Date();
       const nowHH = String(now.getHours()).padStart(2, '0');
       const nowMM = String(now.getMinutes()).padStart(2, '0');
       const nowSS = String(now.getSeconds()).padStart(2, '0');
-      const nowStr = `${nowHH}:${nowMM}:${nowSS}`;
+      const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // ใช้เวลาจริงของ server
+      //const nowStr = `13:00:00`; // ถ้าอยาก debug แบบ fix เวลา
 
       // Auto-enable or disable rooms daily
       if (nowHH>= '17' && nowHH <= '23') {
@@ -195,21 +199,29 @@ app.get('/api/rooms', (req, res) => {
       }
 
       function isPast(endHHMMSS) {
-        return nowStr >= endHHMMSS;
+        return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
       }
 
+      // สร้างผลลัพธ์พร้อม status ใหม่: Free / Reserved / Disabled
       const enriched = rooms.map((r) => {
+        // ถ้าโต๊ะ/ห้องถูกปิดระบบโดยตรง (เช่นมีคอลัมน์ status='disabled') ให้เป็น Disabled ทันที
+        // ถ้าไม่มีนโยบายนี้ ให้คงไว้เฉย ๆ แล้วใช้ logic slot ข้างล่างตัดสิน
         if ((r.status || '').toLowerCase() === 'disabled') {
           return { ...r, status: 'Disabled' };
         }
 
         const roomBookings = byRoom.get(r.id) || [];
+
+        // คัดเฉพาะ slot ที่ "ยังไม่หมดเวลา"
         const remainingSlots = ALL_SLOTS.filter(slot => !isPast(SLOT_ENDS[slot]));
 
+        // ถ้าไม่เหลือ slot ให้จองแล้ว => Disabled
         if (remainingSlots.length === 0) {
           return { ...r, status: 'Disabled' };
         }
 
+        // เช็คว่า remaining slot ถูกกันด้วย Pending/Approved ครบทุกช่องหรือไม่
+        // (ถือว่าใครจองก็กันคิวหมด)
         const occupiedSet = new Set(
           roomBookings
             .filter(b => remainingSlots.includes(b.time_slot))
@@ -221,7 +233,6 @@ app.get('/api/rooms', (req, res) => {
         const derived = allTaken ? 'Reserved' : 'Free';
         return { ...r, status: derived };
       });
-
 
       res.status(200).json({
         message: 'Fetched all rooms successfully',
@@ -246,7 +257,7 @@ app.get('/api/rooms/:id', (req, res) => {
   });
 });
 
-//------------------ Create Booking ---------------------------/
+//------------------ สร้าง Booking (นักศึกษา) ---------------------------/
 
 app.post('/api/bookings', verifyToken, (req, res) => {
   const { room_id, time_slot, reason } = req.body;
@@ -256,6 +267,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
     return res.status(400).json({ message: 'Room ID and time slot are required' });
   }
 
+  // 1) กันผู้ใช้คนเดิมจองมากกว่า 1 รายการในวันเดียว (Pending/Approved)
   const hasActiveSql = `
     SELECT 1 
     FROM bookings
@@ -273,6 +285,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
       });
     }
 
+    // 2) กันชนกันที่ห้อง/ช่วงเวลาเดียวกัน (มีคน Pending หรือ Approved ไปแล้ว)
     const roomSlotSql = `
       SELECT 1 
       FROM bookings
@@ -290,6 +303,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
         });
       }
 
+      // 3) ผ่าน -> สร้าง booking (Pending)
       const insertSql = `
         INSERT INTO bookings (user_id, room_id, booking_date, time_slot, reason, status)
         VALUES (?, ?, CURDATE(), ?, ?, 'Pending')
@@ -312,7 +326,7 @@ app.post('/api/bookings', verifyToken, (req, res) => {
   });
 });
 
-//------------------ My Bookings (student + auto-cancel) ---------------------------/
+//------------------ My Bookings (ฝั่ง Student + Auto-cancel) ---------------------------/
 
 app.get('/api/me/bookings', verifyToken, (req, res) => {
   const userId = req.user.id;
@@ -321,7 +335,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     SELECT 
       b.id            AS booking_id,
       r.name          AS room_name,
-      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d')  AS booking_date,   -- yyyy-mm-dd
       b.time_slot     AS time_slot,      
       b.status        AS status,         
       b.reason        AS reason,          
@@ -334,6 +348,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
          AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC, b.id DESC
   `;
+  // AND DATE(b.booking_date) = CURDATE()
 
   db.query(baseSql, [userId], (err, rows) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -342,6 +357,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: [] });
     }
 
+    // เวลา cutoff ของแต่ละสล็อต
     const SLOT_ENDS = {
       '8-10': '10:00:00',
       '10-12': '12:00:00',
@@ -349,28 +365,32 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       '15-17': '17:00:00',
     };
 
+    // ตรวจสอบรายการที่ยัง Pending แต่หมดอายุ
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     //const nowStr = `13:00:00`;
-    const expiredByDate = [];
-    const expiredByTime = [];
+
+    const expiredByDate = []; // ข้ามวัน
+    const expiredByTime = []; // วันเดียวกันแต่เวลาสล็อตหมด
 
     for (const b of rows) {
       if (b.status !== 'Pending') continue;
 
-      const bookingDate = new Date(b.booking_date);
+      const bookingDate = new Date(b.booking_date); // 'yyyy-mm-dd'
       const bookingOnly = new Date(
         bookingDate.getFullYear(),
         bookingDate.getMonth(),
         bookingDate.getDate()
       );
 
+      // เคสข้ามวัน
       if (bookingOnly < todayOnly) {
         expiredByDate.push(b.booking_id);
         continue;
       }
 
+      // เคสวันนี้แต่เวลาสล็อตหมด
       if (bookingOnly.getTime() === todayOnly.getTime()) {
         const endTime = SLOT_ENDS[b.time_slot];
         if (endTime && nowStr >= endTime) {
@@ -383,6 +403,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
       return res.json({ message: 'OK', bookings: rows });
     }
 
+    // อัปเดตทีละชุดตามเหตุผล
     const updateDateSql = `
       UPDATE bookings
       SET status = 'Cancelled',
@@ -400,6 +421,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     const doUpdateTime = () => {
       if (expiredByTime.length === 0) {
+        // ดึงข้อมูลใหม่หลังอัปเดตให้ตรงกับ DB
         return db.query(baseSql, [userId], (err3, newRows) => {
           if (err3) return res.status(500).json({ message: 'Database error' });
           res.json({ message: 'OK', bookings: newRows });
@@ -418,6 +440,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     };
 
     if (expiredByDate.length === 0) {
+      // ไม่มีชุด date ก็ไปอัปเดต time ต่อเลย
       return doUpdateTime();
     }
 
@@ -524,7 +547,7 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
     db.query(bookingSql, [room_id], (err2, rows) => {
       if (err2) return res.status(500).json({ message: 'Database error' });
 
-      const latestBySlot = new Map();
+      const latestBySlot = new Map(); // key: '8-10' ...
       for (const b of rows) {
         if (!latestBySlot.has(b.time_slot)) {
           latestBySlot.set(b.time_slot, b);
@@ -539,6 +562,7 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
           return { time_slot: slot, status: 'Free' };
         }
 
+        // map สถานะ
         switch (booking.status) {
           case 'Approved':
             return { time_slot: slot, status: 'Reserved' };
@@ -568,12 +592,13 @@ app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   });
 });
 
-//------------------ Cancel Booking (student) ---------------------------/
+//------------------ Cancel Booking (นักศึกษา) ---------------------------/
 
 app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
   const bookingId = req.params.id;
   const userId = req.user.id;
 
+  // ตรวจสอบว่าการจองนี้เป็นของ user คนนั้นหรือไม่
   const checkSql = 'SELECT * FROM bookings WHERE id = ?';
   db.query(checkSql, [bookingId], (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -587,6 +612,7 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
     if (booking.status === 'Cancelled')
       return res.status(400).json({ message: 'Booking already cancelled' });
 
+    // อัปเดตสถานะ
     const updateSql = 'UPDATE bookings SET status = "Cancelled" WHERE id = ?';
     db.query(updateSql, [bookingId], (err2) => {
       if (err2) return res.status(500).json({ message: 'Failed to cancel booking' });
