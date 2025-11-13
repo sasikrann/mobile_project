@@ -483,6 +483,7 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
     JOIN users u ON u.id = b.user_id
     JOIN rooms r ON r.id = b.room_id
     WHERE b.status IN ('Approved','Rejected')
+    AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC
   `;
   db.query(sql, (err, result) => {

@@ -4,7 +4,7 @@ import 'auth_storage.dart';
 
 class Config {
   // ✅ ตั้งไว้จุดเดียว เปลี่ยนที่เดียวทั้งแอป
-  static const apiBase = 'http://192.168.1.132:3000';
+  static const apiBase = 'http://172.27.7.226:3000';
 }
 
 class ApiClient {
@@ -35,5 +35,5 @@ class ApiClient {
 class ApiUnauthorized implements Exception {
   const ApiUnauthorized();
   @override
-  String toString() => 'ApiUnauthorized';
+  String toString() => 'ApiUnauthorized/ password error.';
 }
