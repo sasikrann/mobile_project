@@ -7,6 +7,7 @@ import '../../services/auth_storage.dart';
 import '../../services/api_client.dart';
 import '../../services/upload_service.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
 
 class StaffHomePage extends StatefulWidget {
   const StaffHomePage({super.key});
@@ -22,6 +23,7 @@ class _StaffHomePageState extends State<StaffHomePage>
   bool loading = true;
   String searchQuery = '';
   String filter = 'all'; // all, available, disabled
+
 
   late AnimationController _animController;
 
@@ -170,7 +172,7 @@ class _StaffHomePageState extends State<StaffHomePage>
                 );
               } else if ((room?['image'] ?? '').toString().isNotEmpty) {
                 return Image.network(
-                  room!['image'],
+                  '${Config.apiBase}${room!['image']}',
                   width: 220,
                   height: 140,
                   fit: BoxFit.cover,
@@ -340,7 +342,7 @@ class _StaffHomePageState extends State<StaffHomePage>
               ),
               child: (img != null && img.toString().isNotEmpty)
                   ? Image.network(
-                      img,
+                      '${Config.apiBase}${img}',
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -416,7 +418,7 @@ class _StaffHomePageState extends State<StaffHomePage>
                           Switch(
                             value: !isDisabled,
                             activeColor: Colors.green,
-                            onChanged: editable
+                            onChanged: editable 
                                 ? (v) => _toggleStatus(r['id'], v)
                                 : null,
                           ),
