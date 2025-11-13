@@ -196,8 +196,11 @@ app.get('/api/rooms', (req, res) => {
         const remainingSlots = ALL_SLOTS.filter(slot => !isPast(SLOT_ENDS[slot]));
 
         if (remainingSlots.length === 0) {
+          db.query("UPDATE rooms SET status='disabled'", (err) => {
+            if (err) console.error('Auto-disable failed', err);
+          });
+        } 
           return { ...r, status: 'Disabled' };
-        }
 
         const occupiedSet = new Set(
           roomBookings
@@ -340,7 +343,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
 
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     //const nowStr = `13:00:00`;
     const expiredByDate = [];
     const expiredByTime = [];
@@ -617,7 +620,7 @@ app.post('/api/rooms', verifyToken, upload.single('image'), (req, res) => {
   if (!name) return res.status(400).json({ message: 'Room name is required' });
 
   const imageUrl = req.file
-    ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    ? `/uploads/${req.file.filename}`
     : null;
 
   const insertSql = 'INSERT INTO rooms (name, description, capacity, image, status) VALUES (?, ?, ?, ?, ?)';
@@ -660,7 +663,7 @@ app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
     }
 
     const { name, description, status, capacity } = req.body;
-    const imagePath = req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null;
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
     const fields = [];
     const values = [];
