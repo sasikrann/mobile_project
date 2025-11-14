@@ -187,6 +187,17 @@ app.get('/api/rooms', (req, res) => {
       const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // ใช้เวลาจริงของ server
       //const nowStr = `13:00:00`; // ถ้าอยาก debug แบบ fix เวลา
 
+      // Auto-enable or disable rooms daily
+      if (nowHH>= '17' && nowHH <= '23') {
+        db.query("UPDATE rooms SET status='disabled'", err => {
+          if (err) console.error('Auto-disable failed', err);
+        });
+      } else if (nowHH >= '0' && nowHH < '17') {
+        db.query("UPDATE rooms SET status='available'", err => {
+          if (err) console.error('Auto-enable failed', err);
+        });
+      }
+
       function isPast(endHHMMSS) {
         return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
       }
@@ -334,6 +345,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     JOIN rooms r         ON r.id = b.room_id
     LEFT JOIN users appr ON appr.id = b.approver_id
     WHERE b.user_id = ?
+         AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC, b.id DESC
   `;
   // AND DATE(b.booking_date) = CURDATE()
@@ -356,7 +368,7 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     // ตรวจสอบรายการที่ยัง Pending แต่หมดอายุ
     const now = new Date();
     const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const nowStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     //const nowStr = `13:00:00`;
 
     const expiredByDate = []; // ข้ามวัน
@@ -490,16 +502,22 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
 
   const sql = `
-    SELECT b.id AS booking_id, u.name AS student_name, r.name AS room_name,
-           DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
-           b.time_slot, b.status, b.reject_reason
+    SELECT 
+      b.id AS booking_id, 
+      u.name AS student_name, 
+      r.name AS room_name,
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+      b.time_slot, 
+      b.status, 
+      b.reject_reason
     FROM bookings b
     JOIN users u ON u.id = b.user_id
     JOIN rooms r ON r.id = b.room_id
-    WHERE b.status IN ('Approved','Rejected')
-    AND DATE(b.booking_date) = CURDATE()
+    WHERE b.status IN ('Approved', 'Rejected')
+      AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC
   `;
+
   db.query(sql, (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     res.json({ message: 'OK', history: result });
@@ -507,7 +525,8 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
 });
 
 
-//------------------ Room Status (ใช้ตอนหน้าเลือก slot) ---------------------------/
+
+//------------------ Room Status (use on choose slot) ---------------------------/
 
 app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   const room_id = req.params.id;
@@ -635,7 +654,7 @@ app.post('/api/rooms', verifyToken, upload.single('image'), (req, res) => {
   if (!name) return res.status(400).json({ message: 'Room name is required' });
 
   const imageUrl = req.file
-    ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    ? `/uploads/${req.file.filename}`
     : null;
 
   const insertSql = 'INSERT INTO rooms (name, description, capacity, image, status) VALUES (?, ?, ?, ?, ?)';
@@ -678,7 +697,7 @@ app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
     }
 
     const { name, description, status, capacity } = req.body;
-    const imagePath = req.file ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` : null;
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
     const fields = [];
     const values = [];
