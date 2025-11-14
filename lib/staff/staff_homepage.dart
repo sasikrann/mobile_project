@@ -24,7 +24,6 @@ class _StaffHomePageState extends State<StaffHomePage>
   String searchQuery = '';
   String filter = 'all'; // all, available, disabled
 
-
   late AnimationController _animController;
 
   @override
@@ -307,6 +306,9 @@ class _StaffHomePageState extends State<StaffHomePage>
     final rawStatus = (r['status'] ?? 'unknown').toString().toLowerCase();
     final editable = _isEditable(r);
     final isDisabled = rawStatus == 'disabled';
+    DateTime now = DateTime.now();
+    bool isAfterFive = now.hour >= 17; // After 5 PM
+    bool canToggle = editable && !isAfterFive;
 
     // Dynamic badge — auto reflect time slot + DB status
     String badgeLabel;
@@ -411,16 +413,40 @@ class _StaffHomePageState extends State<StaffHomePage>
                     children: [
                       Text(
                         'Seat: ${r['capacity'] ?? '-'}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       Row(
                         children: [
-                          Switch(
-                            value: !isDisabled,
-                            activeColor: Colors.green,
-                            onChanged: editable 
-                                ? (v) => _toggleStatus(r['id'], v)
-                                : null,
+                          // Apply dimming to switch when locked
+                          Opacity(
+                            opacity: canToggle ? 1.0 : 0.5,
+                            child: Switch(
+                              value: !isDisabled,
+                              activeColor: Colors.green,
+                              onChanged: canToggle
+                                  ? (v) => _toggleStatus(r['id'], v)
+                                  : (v) {
+                                      // Optional: show snack bar if staff tries after 5 PM
+                                      if (isAfterFive) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Room control is locked after 17:00. Please manage tomorrow.',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                      }
+                                    },
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(
@@ -498,12 +524,12 @@ class _StaffHomePageState extends State<StaffHomePage>
                     ],
                   ),
                 ),
-                 FloatingActionButton(
+                FloatingActionButton(
                   onPressed: _openDialog,
                   backgroundColor: const Color(0xFFDD0303),
-                  child: const Icon(Icons.add,color: Colors.white,),
+                  child: const Icon(Icons.add, color: Colors.white),
                 ),
-               
+
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: fetchRooms,
@@ -517,7 +543,6 @@ class _StaffHomePageState extends State<StaffHomePage>
                           ),
                   ),
                 ),
-                  
               ],
             ),
     );
