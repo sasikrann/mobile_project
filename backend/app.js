@@ -131,17 +131,26 @@ function checkHasActiveBookings(roomId, callback) {
     FROM bookings
     WHERE room_id = ?
       AND status IN ('Pending','Approved')
+      AND booking_date = CURDATE()
   `;
+
   db.query(sql, [roomId], (err, rows) => {
     if (err) return callback(err);
-    const cnt = (rows && rows[0] && rows[0].cnt) ? rows[0].cnt : 0;
+
+    const cnt =
+      rows && rows[0] && typeof rows[0].cnt !== "undefined"
+        ? rows[0].cnt
+        : 0;
+
     callback(null, cnt > 0);
   });
 }
 
 //------------------ Rooms (list) ---------------------------/
 
-app.get('/api/rooms', (req, res) => {
+app.get('/api/rooms', verifyToken, (req, res) => {
+  const userRole = req.user?.role || 'student'; // กันไว้เผื่อ
+  const isStaff = userRole === 'staff';
   const roomsSql = 'SELECT id, name, description, capacity, status, image FROM rooms';
 
   db.query(roomsSql, (err, rooms) => {
@@ -203,10 +212,11 @@ app.get('/api/rooms', (req, res) => {
       }
 
       // สร้างผลลัพธ์พร้อม status ใหม่: Free / Reserved / Disabled
-      const enriched = rooms.map((r) => {
-        // ถ้าโต๊ะ/ห้องถูกปิดระบบโดยตรง (เช่นมีคอลัมน์ status='disabled') ให้เป็น Disabled ทันที
-        // ถ้าไม่มีนโยบายนี้ ให้คงไว้เฉย ๆ แล้วใช้ logic slot ข้างล่างตัดสิน
-        if ((r.status || '').toLowerCase() === 'disabled') {
+            const enriched = rooms.map((r) => {
+        const dbStatus = (r.status || '').toLowerCase();
+
+        // 1) ถ้า DB mark ว่า disabled → ทุกคนต้องเห็นว่า Disabled (ปิดซ่อม / ปิดถาวร)
+        if (dbStatus === 'disabled') {
           return { ...r, status: 'Disabled' };
         }
 
@@ -215,13 +225,21 @@ app.get('/api/rooms', (req, res) => {
         // คัดเฉพาะ slot ที่ "ยังไม่หมดเวลา"
         const remainingSlots = ALL_SLOTS.filter(slot => !isPast(SLOT_ENDS[slot]));
 
-        // ถ้าไม่เหลือ slot ให้จองแล้ว => Disabled
+        // 2) ถ้าไม่เหลือ slot ให้จองแล้ว
         if (remainingSlots.length === 0) {
-          return { ...r, status: 'Disabled' };
+          if (isStaff) {
+            // 👉 staff: ไม่บังคับเป็น Disabled
+            // ให้ดูจาก booking แทนว่า วันนี้มีใครใช้ / จองอยู่มั้ย
+            const hasAnyBooking = roomBookings.length > 0;
+            const derived = hasAnyBooking ? 'Reserved' : 'Free';
+            return { ...r, status: derived };
+          } else {
+            // 👉 user ปกติ: มองว่าไม่มีสิทธิ์จองแล้ว = Disabled
+            return { ...r, status: 'Disabled' };
+          }
         }
 
-        // เช็คว่า remaining slot ถูกกันด้วย Pending/Approved ครบทุกช่องหรือไม่
-        // (ถือว่าใครจองก็กันคิวหมด)
+        // 3) ยังมี slot เหลือ → ใช้ logic เดิมสำหรับทุก role
         const occupiedSet = new Set(
           roomBookings
             .filter(b => remainingSlots.includes(b.time_slot))
@@ -229,8 +247,8 @@ app.get('/api/rooms', (req, res) => {
         );
 
         const allTaken = remainingSlots.every(slot => occupiedSet.has(slot));
-
         const derived = allTaken ? 'Reserved' : 'Free';
+
         return { ...r, status: derived };
       });
 

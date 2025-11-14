@@ -308,7 +308,8 @@ class _StaffHomePageState extends State<StaffHomePage>
     final isDisabled = rawStatus == 'disabled';
     DateTime now = DateTime.now();
     bool isAfterFive = now.hour >= 17; // After 5 PM
-    bool canToggle = editable && !isAfterFive;
+    // bool canToggle = editable && !isAfterFive;
+    bool canToggle = editable;
 
     // Dynamic badge — auto reflect time slot + DB status
     String badgeLabel;
