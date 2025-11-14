@@ -183,6 +183,17 @@ app.get('/api/rooms', (req, res) => {
       const nowSS = String(now.getSeconds()).padStart(2, '0');
       const nowStr = `${nowHH}:${nowMM}:${nowSS}`;
 
+      // Auto-enable or disable rooms daily
+      if (nowHH>= '17' && nowHH <= '23') {
+        db.query("UPDATE rooms SET status='disabled'", err => {
+          if (err) console.error('Auto-disable failed', err);
+        });
+      } else if (nowHH >= '0' && nowHH < '17') {
+        db.query("UPDATE rooms SET status='available'", err => {
+          if (err) console.error('Auto-enable failed', err);
+        });
+      }
+
       function isPast(endHHMMSS) {
         return nowStr >= endHHMMSS;
       }
@@ -196,11 +207,8 @@ app.get('/api/rooms', (req, res) => {
         const remainingSlots = ALL_SLOTS.filter(slot => !isPast(SLOT_ENDS[slot]));
 
         if (remainingSlots.length === 0) {
-          db.query("UPDATE rooms SET status='disabled'", (err) => {
-            if (err) console.error('Auto-disable failed', err);
-          });
-        } 
           return { ...r, status: 'Disabled' };
+        }
 
         const occupiedSet = new Set(
           roomBookings
