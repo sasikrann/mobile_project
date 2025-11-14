@@ -187,16 +187,16 @@ app.get('/api/rooms', (req, res) => {
       const nowStr = `${nowHH}:${nowMM}:${nowSS}`; // ใช้เวลาจริงของ server
       //const nowStr = `13:00:00`; // ถ้าอยาก debug แบบ fix เวลา
 
-      // Auto-enable or disable rooms daily
-      if (nowHH>= '17' && nowHH <= '23') {
-        db.query("UPDATE rooms SET status='disabled'", err => {
-          if (err) console.error('Auto-disable failed', err);
-        });
-      } else if (nowHH >= '0' && nowHH < '17') {
-        db.query("UPDATE rooms SET status='available'", err => {
-          if (err) console.error('Auto-enable failed', err);
-        });
-      }
+      // // Auto-enable or disable rooms daily
+      // if (nowHH>= '17' && nowHH <= '23') {
+      //   db.query("UPDATE rooms SET status='disabled'", err => {
+      //     if (err) console.error('Auto-disable failed', err);
+      //   });
+      // } else if (nowHH >= '0' && nowHH < '17') {
+      //   db.query("UPDATE rooms SET status='available'", err => {
+      //     if (err) console.error('Auto-enable failed', err);
+      //   });
+      // }
 
       function isPast(endHHMMSS) {
         return nowStr >= endHHMMSS; // >= end => slot หมดสิทธิ์จองแล้ว
@@ -345,7 +345,6 @@ app.get('/api/me/bookings', verifyToken, (req, res) => {
     JOIN rooms r         ON r.id = b.room_id
     LEFT JOIN users appr ON appr.id = b.approver_id
     WHERE b.user_id = ?
-         AND DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC, b.id DESC
   `;
   // AND DATE(b.booking_date) = CURDATE()
@@ -526,7 +525,7 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
 
 
 
-//------------------ Room Status (use on choose slot) ---------------------------/
+//------------------ Room Status (ใช้ตอนหน้าเลือก slot) ---------------------------/
 
 app.get('/api/rooms/:id/status', verifyToken, (req, res) => {
   const room_id = req.params.id;
