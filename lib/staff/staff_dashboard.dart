@@ -1,7 +1,8 @@
-// staff_dashboard.dart
+// lib/lecturer/lecturer_dashboard.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../../services/auth_storage.dart';
+
+import '../services/auth_storage.dart';
 import '../services/api_client.dart';
 
 class StaffDashboardPage extends StatefulWidget {
@@ -41,12 +42,37 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
     super.dispose();
   }
 
+  // เวลาอ้างอิง (ตอนเทสล็อก 13:00 แบบหน้า Timeslot)
+  DateTime _now() {
+    // return DateTime(
+    //   DateTime.now().year,
+    //   DateTime.now().month,
+    //   DateTime.now().day,
+    //   13,
+    //   0,
+    // );
+    // ถ้าอยากใช้เวลาจริงค่อยเปลี่ยนเป็น
+    return DateTime.now();
+  }
+
+  /// code = '8-10', '10-12', ...
+  bool _isSlotPastEnd(String code, DateTime now) {
+    final parts = code.split('-');
+    if (parts.length != 2) return false;
+
+    final endH = int.tryParse(parts[1]) ?? 0;
+    final endTime = DateTime(now.year, now.month, now.day, endH, 0);
+    return now.isAfter(endTime);
+  }
+
   Future<void> _initDashboard() async {
     final savedToken = await AuthStorage.getToken();
     if (savedToken == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session expired. Please log in again.')),
+          const SnackBar(
+            content: Text('Session expired. Please log in again.'),
+          ),
         );
         Navigator.pushReplacementNamed(context, '/login');
       }
@@ -60,6 +86,9 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
     setState(() => loading = true);
 
     try {
+      // เวลาอ้างอิง (ให้ตรงกับ Timeslot)
+      final now = _now();
+
       // ===== 1️⃣ ดึงรายการห้องทั้งหมด =====
       final roomsRes = await ApiClient.get('/api/rooms');
       if (roomsRes.statusCode != 200) {
@@ -69,21 +98,20 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
       final rooms = (jsonDecode(roomsRes.body)['rooms'] as List<dynamic>);
       totalRooms = rooms.length;
 
-      // ===== 2️⃣ แยกห้องที่ปิดออก =====
+      // ===== 2️⃣ แยกห้องที่ปิดออก (Disabled / Closed) =====
       final closedRooms = rooms.where((r) {
         final status = (r['status'] ?? '').toString().toLowerCase();
-         return status == 'disabled' || status == 'closed';
+        return status == 'disabled' || status == 'closed';
       }).toList();
 
       totalClosedRooms = closedRooms.length;
       final openRooms = rooms.where((r) => !closedRooms.contains(r)).toList();
 
-      // 1 ห้องมี 4 slot
-      final totalPossibleSlots = openRooms.length * 4;
+      // ===== 3️⃣ นับ slot ตามสถานะจริง (เฉพาะที่ยังไม่หมดเวลา) =====
       int reserved = 0;
       int pending = 0;
+      int free = 0;
 
-      // ===== 3️⃣ ดึงสถานะห้องที่เปิดอยู่ (parallel fetch) =====
       final futures = openRooms.map((room) async {
         final id = room['id'];
         try {
@@ -94,36 +122,41 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
             final slots = (body['slots'] as List<dynamic>?) ?? [];
 
             for (final s in slots) {
+              final code = (s['time_slot'] ?? '').toString(); // '8-10'
+              // ถ้า slot นี้หมดเวลาแล้ว -> ไม่ต้องนับใน dashboard
+              if (_isSlotPastEnd(code, now)) continue;
+
               final st = (s['status'] ?? '').toString().toLowerCase().trim();
+
               if (st == 'reserved') {
                 reserved++;
               } else if (st == 'pending' || st == 'on hold' || st == 'onhold') {
                 pending++;
+              } else {
+                // ที่เหลือถือเป็น Free (ตาม /api/rooms/:id/status)
+                free++;
               }
             }
           }
         } catch (e) {
-          // network error → skip this room
           debugPrint('⚠️ Failed to fetch status for room $id: $e');
         }
       }).toList();
 
-      // รอทุก future ให้เสร็จ
-      await Future.wait(futures).timeout(const Duration(seconds: 10), onTimeout: () {
-        debugPrint('⏰ Timeout while fetching room statuses');
-        return futures.map((_) => null).toList();
-      });
+      await Future.wait(futures).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⏰ Timeout while fetching room statuses');
+          return futures.map((_) => null).toList();
+        },
+      );
 
-      // ===== 4️⃣ คำนวณสรุป =====
-      int free = totalPossibleSlots - reserved - pending;
-      if (free < 0) free = 0;
-
-      // ===== 5️⃣ อัปเดต state =====
+      // ===== 4️⃣ อัปเดต state =====
       if (!mounted) return;
       setState(() {
         totalReserved = reserved;
         totalPending = pending;
-        totalFree = free;
+        totalFree = free; // ✅ ตอนนี้คือจำนวน slot free ที่ยังไม่หมดเวลา
         loading = false;
       });
     } on ApiUnauthorized {
@@ -137,9 +170,9 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
       debugPrint('❌ Dashboard load error: $e\n$st');
       if (!mounted) return;
       setState(() => loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading dashboard: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading dashboard: $e')));
     }
   }
 
@@ -178,7 +211,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFDD0303).withValues(alpha:0.08),
+                    const Color(0xFFDD0303).withValues(alpha: 0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -195,7 +228,7 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFE67E22).withValues(alpha:0.06),
+                    const Color(0xFFE67E22).withValues(alpha: 0.06),
                     Colors.transparent,
                   ],
                 ),
@@ -219,26 +252,30 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                           FadeTransition(
                             opacity: _controller,
                             child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, -0.3),
-                                end: Offset.zero,
-                              ).animate(CurvedAnimation(
-                                parent: _controller,
-                                curve: Curves.easeOut,
-                              )),
+                              position:
+                                  Tween<Offset>(
+                                    begin: const Offset(0, -0.3),
+                                    end: Offset.zero,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: _controller,
+                                      curve: Curves.easeOut,
+                                    ),
+                                  ),
                               child: Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha:0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha:0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     width: 2,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFDD0303)
-                                          .withValues(alpha:0.08),
+                                      color: const Color(
+                                        0xFFDD0303,
+                                      ).withValues(alpha: 0.08),
                                       blurRadius: 20,
                                       offset: const Offset(0, 4),
                                     ),
@@ -255,12 +292,12 @@ class _StaffDashboardPageState extends State<StaffDashboardPage>
                                             Color(0xFFFF4444),
                                           ],
                                         ),
-                                        borderRadius:
-                                            BorderRadius.circular(14),
+                                        borderRadius: BorderRadius.circular(14),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: const Color(0xFFDD0303)
-                                                .withValues(alpha:0.3),
+                                            color: const Color(
+                                              0xFFDD0303,
+                                            ).withValues(alpha: 0.3),
                                             blurRadius: 8,
                                             offset: const Offset(0, 4),
                                           ),
@@ -456,15 +493,15 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: iconColor.withValues(alpha:0.15), width: 2),
+        border: Border.all(color: iconColor.withValues(alpha: 0.15), width: 2),
         boxShadow: [
           BoxShadow(
-            color: iconColor.withValues(alpha:0.12),
+            color: iconColor.withValues(alpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -481,7 +518,10 @@ class _StatCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: iconColor.withValues(alpha:0.2), width: 2),
+                border: Border.all(
+                  color: iconColor.withValues(alpha: 0.2),
+                  width: 2,
+                ),
               ),
               child: Icon(icon, color: iconColor, size: 28),
             ),
@@ -529,7 +569,10 @@ class _AllRoomsCard extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha:0.2), width: 2),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 2,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(28.0),
@@ -539,15 +582,18 @@ class _AllRoomsCard extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha:0.25),
+                color: Colors.white.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha:0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),
-              child: const Icon(Icons.meeting_room_rounded,
-                  color: Colors.white, size: 32),
+              child: const Icon(
+                Icons.meeting_room_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
             ),
             const SizedBox(width: 20),
             Expanded(

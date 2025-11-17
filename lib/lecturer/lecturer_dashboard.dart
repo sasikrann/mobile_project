@@ -42,6 +42,29 @@ class _lecturerDashboardPageState extends State<lecturerDashboardPage>
     super.dispose();
   }
 
+  // เวลาอ้างอิง (ตอนเทสล็อก 13:00 แบบหน้า Timeslot)
+  DateTime _now() {
+    // return DateTime(
+    //   DateTime.now().year,
+    //   DateTime.now().month,
+    //   DateTime.now().day,
+    //   13,
+    //   0,
+    // );
+    // ถ้าอยากใช้เวลาจริงค่อยเปลี่ยนเป็น
+    return DateTime.now();
+  }
+
+  /// code = '8-10', '10-12', ...
+  bool _isSlotPastEnd(String code, DateTime now) {
+    final parts = code.split('-');
+    if (parts.length != 2) return false;
+
+    final endH = int.tryParse(parts[1]) ?? 0;
+    final endTime = DateTime(now.year, now.month, now.day, endH, 0);
+    return now.isAfter(endTime);
+  }
+
   Future<void> _initDashboard() async {
     final savedToken = await AuthStorage.getToken();
     if (savedToken == null) {
@@ -63,6 +86,9 @@ class _lecturerDashboardPageState extends State<lecturerDashboardPage>
     setState(() => loading = true);
 
     try {
+      // เวลาอ้างอิง (ให้ตรงกับ Timeslot)
+      final now = _now();
+
       // ===== 1️⃣ ดึงรายการห้องทั้งหมด =====
       final roomsRes = await ApiClient.get('/api/rooms');
       if (roomsRes.statusCode != 200) {
@@ -72,22 +98,20 @@ class _lecturerDashboardPageState extends State<lecturerDashboardPage>
       final rooms = (jsonDecode(roomsRes.body)['rooms'] as List<dynamic>);
       totalRooms = rooms.length;
 
-      // ===== 2️⃣ แยกห้องที่ปิดออก =====
+      // ===== 2️⃣ แยกห้องที่ปิดออก (Disabled / Closed) =====
       final closedRooms = rooms.where((r) {
         final status = (r['status'] ?? '').toString().toLowerCase();
-        // รองรับทั้ง disabled จาก DB และ Disabled ที่ backend เซ็ต
         return status == 'disabled' || status == 'closed';
       }).toList();
 
       totalClosedRooms = closedRooms.length;
       final openRooms = rooms.where((r) => !closedRooms.contains(r)).toList();
 
-      // 1 ห้องมี 4 slot
-      final totalPossibleSlots = openRooms.length * 4;
+      // ===== 3️⃣ นับ slot ตามสถานะจริง (เฉพาะที่ยังไม่หมดเวลา) =====
       int reserved = 0;
       int pending = 0;
+      int free = 0;
 
-      // ===== 3️⃣ ดึงสถานะห้องที่เปิดอยู่ (parallel fetch) =====
       final futures = openRooms.map((room) async {
         final id = room['id'];
         try {
@@ -98,21 +122,27 @@ class _lecturerDashboardPageState extends State<lecturerDashboardPage>
             final slots = (body['slots'] as List<dynamic>?) ?? [];
 
             for (final s in slots) {
+              final code = (s['time_slot'] ?? '').toString(); // '8-10'
+              // ถ้า slot นี้หมดเวลาแล้ว -> ไม่ต้องนับใน dashboard
+              if (_isSlotPastEnd(code, now)) continue;
+
               final st = (s['status'] ?? '').toString().toLowerCase().trim();
+
               if (st == 'reserved') {
                 reserved++;
               } else if (st == 'pending' || st == 'on hold' || st == 'onhold') {
                 pending++;
+              } else {
+                // ที่เหลือถือเป็น Free (ตาม /api/rooms/:id/status)
+                free++;
               }
             }
           }
         } catch (e) {
-          // network error → skip this room
           debugPrint('⚠️ Failed to fetch status for room $id: $e');
         }
       }).toList();
 
-      // รอทุก future ให้เสร็จ
       await Future.wait(futures).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -121,16 +151,12 @@ class _lecturerDashboardPageState extends State<lecturerDashboardPage>
         },
       );
 
-      // ===== 4️⃣ คำนวณสรุป =====
-      int free = totalPossibleSlots - reserved - pending;
-      if (free < 0) free = 0;
-
-      // ===== 5️⃣ อัปเดต state =====
+      // ===== 4️⃣ อัปเดต state =====
       if (!mounted) return;
       setState(() {
         totalReserved = reserved;
         totalPending = pending;
-        totalFree = free;
+        totalFree = free; // ✅ ตอนนี้คือจำนวน slot free ที่ยังไม่หมดเวลา
         loading = false;
       });
     } on ApiUnauthorized {
