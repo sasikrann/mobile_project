@@ -526,7 +526,8 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
       DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
       b.time_slot, 
       b.status, 
-      b.reject_reason
+      b.reject_reason,
+      b.reason
     FROM bookings b
     JOIN users u ON u.id = b.user_id
     JOIN rooms r ON r.id = b.room_id
@@ -536,7 +537,7 @@ app.get('/api/lecturer/history', verifyToken, (req, res) => {
   `;
 
   db.query(sql, (err, result) => {
-    if (err) return res.status(500).json({ message: 'Database error' });
+    if (err) return res.status(500).json({ message: err.message });
     res.json({ message: 'OK', history: result });
   });
 });
@@ -757,7 +758,9 @@ app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
       r.id AS room_id,
       r.name AS room_name,
 
+
       r.status AS room_status,
+
 
       lec.id AS lecturer_id,
       lec.name AS lecturer_name,

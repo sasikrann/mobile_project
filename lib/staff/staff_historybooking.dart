@@ -31,6 +31,7 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
     final List<dynamic> list = data['history'] ?? data['bookings'] ?? [];
 
     setState(() {
+
   bookings = list.map((b) {
     return BookingData(
       roomNumber: b['room_name'] ?? '',
@@ -49,6 +50,8 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
   }).toList();
 });
 
+
+     
   }
 }
 
@@ -266,26 +269,8 @@ class _BookingCard extends StatefulWidget {
   State<_BookingCard> createState() => _BookingCardState();
 }
 
-class _BookingCardState extends State<_BookingCard> with SingleTickerProviderStateMixin {bool get isRoomClosed {
-  final rs = widget.booking.roomStatus.toLowerCase();
-  return rs == 'disabled' || rs == 'closed';
-}
+class _BookingCardState extends State<_BookingCard> with SingleTickerProviderStateMixin {
 
-Color get _statusColor {
-  return isRoomClosed ? const Color(0xFFE74C3C) : const Color(0xFF0FA968);
-}
-
-Color get _statusBgColor {
-  return isRoomClosed ? const Color(0xFFFFE8E8) : const Color(0xFFD4F4E6);
-}
-
-String get _statusText {
-  return isRoomClosed ? 'Room Closed' : 'Room Open';
-}
-
-IconData get _statusIcon {
-  return isRoomClosed ? Icons.block_rounded : Icons.check_circle_rounded;
-}
 
   bool _isPressed = false;
   late AnimationController _hoverController;
@@ -305,10 +290,34 @@ IconData get _statusIcon {
     super.dispose();
   }
 
- 
 
+  bool get _isRoomClosed {
+  final rs = widget.booking.roomStatus.toLowerCase();
+  return rs == 'disabled' || rs == 'closed';
+}
 
-  
+  Color get _statusColor {
+      // ถ้าห้องปิด → แดง, ถ้าห้องเปิด → เขียว
+      return _isRoomClosed
+          ? const Color(0xFFE74C3C)
+          : const Color(0xFF0FA968);
+    }
+
+    Color get _statusBgColor {
+      return _isRoomClosed
+          ? const Color(0xFFFFE8E8)
+          : const Color(0xFFD4F4E6);
+    }
+
+    String get _statusText {
+      return _isRoomClosed ? 'Room Closed' : 'Room Open';
+    }
+
+    IconData get _statusIcon {
+      return _isRoomClosed
+          ? Icons.block_rounded
+          : Icons.check_circle_rounded;
+    }
 
 
   @override
@@ -828,11 +837,14 @@ class BookingData {
 
   
   final String approvedBy;
+
   final String rejectedBy;
   final String rejectReason;
 
-  final BookingStatus status;
-  final String roomStatus;
+
+  final BookingStatus status;   // สถานะการจอง
+  final String roomStatus;      // สถานะห้อง
+
 
   BookingData({
     required this.roomNumber,
@@ -848,17 +860,19 @@ class BookingData {
 }
 
 BookingStatus parseStatus(String s) {
-  switch (s.toLowerCase()) {
-    case 'approved':
-      return BookingStatus.approved;
-    case 'pending':
-      return BookingStatus.pending;
-    case 'rejected':
-      return BookingStatus.rejected; 
-    default:
-      return BookingStatus.disabled;
-  }
+  final v = s.toLowerCase();
+
+  if (v == 'approved') return BookingStatus.approved;
+  if (v == 'pending') return BookingStatus.pending;
+  if (v == 'rejected') return BookingStatus.rejected;
+
+  // ถ้า backend ส่งสถานะห้องเข้ามา เช่น open/closed/disabled
+  if (v == 'open' || v == 'available') return BookingStatus.pending; 
+  if (v == 'closed' || v == 'disabled') return BookingStatus.disabled;
+
+  return BookingStatus.pending; // fallback
 }
+
 
 String convertSlot(String slot) {
   switch (slot) {
