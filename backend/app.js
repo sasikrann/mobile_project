@@ -741,6 +741,54 @@ app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
     });
   });
 });
+app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
+  if (req.user.role !== 'staff') {
+    return res.status(403).json({ message: 'Only staff can view full booking history' });
+  }
+
+  const sql = `
+    SELECT 
+      b.id AS booking_id,
+
+      stu.id AS student_id,
+      stu.name AS student_name,
+
+      r.id AS room_id,
+      r.name AS room_name,
+
+      lec.id AS lecturer_id,
+      lec.name AS lecturer_name,
+
+      DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date,
+      b.time_slot,
+      b.status,
+      b.reason,
+      b.reject_reason,
+      DATE_FORMAT(b.created_at, '%Y-%m-%d %H:%i:%s') AS created_time
+
+    FROM bookings b
+    JOIN users stu ON stu.id = b.user_id
+    JOIN rooms r ON r.id = b.room_id
+    LEFT JOIN users lec ON lec.id = b.approver_id
+    WHERE DATE(b.booking_date) = CURDATE()
+    ORDER BY b.created_at DESC
+    
+
+  `;
+
+  db.query(sql, (err, rows) => {
+    if (err) {
+      console.error("Database Error:", err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    res.json({
+      message: "Fetched full booking history successfully",
+      history: rows
+    });
+  });
+});
+
 
 //  PATCH Toggle open/closed -----------------------//
 app.patch('/api/rooms/:id/status', verifyToken, (req, res) => {

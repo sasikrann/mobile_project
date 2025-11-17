@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import '../services/api_client.dart';
 
 class StaffHistoryBookingPage extends StatefulWidget {
   const StaffHistoryBookingPage({
@@ -17,49 +19,42 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
 
   late AnimationController _controller;
 
-  final List<BookingData> bookings = [
-    BookingData(
-      roomNumber: '1',
-      date: '15 March 2024',
-      time: '8:00 AM - 10:00',
-      bookedBy: 'Ethan Carter',
-      approvedBy: 'Sophia Bennett',
-      status: BookingStatus.approved,
-    ),
-    BookingData(
-      roomNumber: '6',
-      date: '15 March 2024',
-      time: '10:00 AM - 12:00',
-      bookedBy: 'Olivia Harper',
-      approvedBy: 'Liam Foster',
-      status: BookingStatus.approved,
-    ),
-    BookingData(
-      roomNumber: '2',
-      date: '15 March 2024',
-      time: '13:00 PM - 15:00',
-      bookedBy: 'Noah Parker',
-      approvedBy: '',
-      status: BookingStatus.pending,
-    ),
-    BookingData(
-      roomNumber: '4',
-      date: '15 March 2024',
-      time: '',
-      bookedBy: 'Isabella Hayes (staff)',
-      approvedBy: '',
-      status: BookingStatus.disabled,
-    ),
-  ];
+  List<BookingData> bookings = [];
+  Future<void> loadBookings() async {
+  final res = await ApiClient.get('/api/staff/bookings/history');
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    )..forward();
+  if (res.statusCode == 200) {
+    final data = json.decode(res.body);
+
+    final List<dynamic> list = data['history'];  // ← เปลี่ยนตรงนี้
+
+    setState(() {
+      bookings = list.map((b) {
+        return BookingData(
+          roomNumber: b['room_name'].toString(),
+          date: b['booking_date'].toString(),
+          time: convertSlot(b['time_slot']),
+          bookedBy: b['student_name'] ?? '',
+          approvedBy: b['lecturer_name'] ?? '',
+          status: parseStatus(b['status']),
+        );
+      }).toList();
+    });
   }
+}
+
+
+
+ @override
+void initState() {
+  super.initState();
+  _controller = AnimationController(
+    duration: const Duration(milliseconds: 1200),
+    vsync: this,
+  )..forward();
+
+  loadBookings();  
+}
 
   @override
   void dispose() {
@@ -823,4 +818,29 @@ class BookingData {
     required this.approvedBy,
     required this.status,
   });
+}
+BookingStatus parseStatus(String s) {
+  switch (s) {
+    case 'approved':
+      return BookingStatus.approved;
+    case 'pending':
+      return BookingStatus.pending;
+    case 'rejected':
+    default:
+      return BookingStatus.disabled;
+  }
+}
+String convertSlot(String slot) {
+  switch (slot) {
+    case '8-10':
+      return '08:00 - 10:00';
+    case '10-12':
+      return '10:00 - 12:00';
+    case '13-15':
+      return '13:00 - 15:00';
+    case '15-17':
+      return '15:00 - 17:00';
+    default:
+      return '';
+  }
 }
