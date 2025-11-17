@@ -741,6 +741,7 @@ app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
     });
   });
 });
+// API: Staff ดูประวัติการจองทั้งหมดของวันนี้//
 app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
   if (req.user.role !== 'staff') {
     return res.status(403).json({ message: 'Only staff can view full booking history' });

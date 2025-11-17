@@ -19,7 +19,7 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
 
   late AnimationController _controller;
 
-  List<BookingData> bookings = [];
+  List<BookingData> bookings = []; // สร้าง list สำหรับเก็บข้อมูลประวัติการจองที่โหลดมาจาก API
   Future<void> loadBookings() async {
   final res = await ApiClient.get('/api/staff/bookings/history');
 
