@@ -894,13 +894,29 @@ class _BookingCardState extends State<_BookingCard> {
                         _dividerGlow(_statusColor),
                         const SizedBox(height: 16),
 
+                        // 🔹 1) การ์ด Booking Reason สำหรับ pending + confirmed
+                        if ((widget.booking.status == BookingStatus.confirmed ||
+                            widget.booking.status == BookingStatus.pending) &&
+                            widget.booking.bookingReason != null &&
+                            widget.booking.bookingReason!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _bookingReasonBox(
+                              widget.booking.status,
+                              widget.booking.bookingReason,
+                            ),
+                          ),
+
+                        // 🔹 2) ถ้า approved ก็ยังโชว์ APPROVED BY เหมือนเดิม
                         if (widget.booking.status == BookingStatus.confirmed)
                           _approvedBox(widget.booking.approver),
 
+                        // 🔹 3) ถ้า pending ก็ยังมีปุ่ม Cancel ได้เหมือนเดิม
                         if (widget.booking.status == BookingStatus.pending &&
                             widget.onRequestCancel != null)
                           _cancelButton(widget.onRequestCancel!),
 
+                        // 🔹 4) ถ้า cancelled หรือ rejected ใช้การ์ดเดิมสำหรับ reject reason / cancelled
                         if (widget.booking.status == BookingStatus.cancelled ||
                             widget.booking.status == BookingStatus.rejected)
                           _rejectedBox(
