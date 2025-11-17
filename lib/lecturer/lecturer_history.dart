@@ -502,10 +502,20 @@ class _BookingCard extends StatelessWidget {
                 ),
               ),
 
-              if (booking.bookingReason != null &&
+              // 1) ถ้า approved → แสดง booking reason
+              if (booking.status == BookingStatus.approved &&
+                  booking.bookingReason != null &&
                   booking.bookingReason!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _bookingReasonBox(),
+              ],
+
+              // 2) ถ้า rejected (ในหน้า lecturer = disabled) → แสดง rejected reason แทน
+              if (booking.status == BookingStatus.disabled &&
+                  booking.rejectReason != null &&
+                  booking.rejectReason!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _rejectedReasonBox(),
               ],
             ],
           ),
@@ -514,31 +524,18 @@ class _BookingCard extends StatelessWidget {
     );
   }
 
-    Widget _bookingReasonBox() {
+  Widget _bookingReasonBox() {
     if (booking.bookingReason == null || booking.bookingReason!.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // ใช้สีตามสถานะให้ฟีลคล้าย student
-    final isPending = booking.status == BookingStatus.pending;
-    final isApproved = booking.status == BookingStatus.approved;
-
-    final Color base = isPending
-        ? const Color(0xFFE67E22) // pending -> ส้ม (ตาม status เดิม)
-        : isApproved
-            ? const Color(0xFF0FA968) // approved -> เขียว
-            : const Color(0xFF8B6F47); // disabled/อื่น ๆ -> น้ำตาลกลาง ๆ
-
-    final Color bg = isPending
-        ? const Color(0xFFFDEDD7)
-        : isApproved
-            ? const Color(0xFFD4F4E6)
-            : const Color(0xFFFFF3E0);
+    const base = Color(0xFF0FA968);
+    const bg = Color(0xFFD4F4E6);
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.7),
+        color: bg.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: base.withValues(alpha: 0.35),
@@ -571,7 +568,7 @@ class _BookingCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.85),
+              color: Colors.white.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: base.withValues(alpha: 0.2),
@@ -606,6 +603,87 @@ class _BookingCard extends StatelessWidget {
       ),
     );
   }
+
+  // สำหรับ rejected (disabled) → แสดง rejected reason
+  Widget _rejectedReasonBox() {
+    if (booking.rejectReason == null || booking.rejectReason!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    const base = Color(0xFFE74C3C); // แดงเดียวกับ disabled/rejected
+    const bg = Color(0xFFFFE8E8);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: base.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_rounded,
+                size: 16,
+                color: base.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Booking Rejected',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: base,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: base.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reason: ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF8B6F47).withValues(alpha: 0.9),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    booking.rejectReason!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D1810),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 enum BookingStatus { approved, pending, disabled }
@@ -617,6 +695,7 @@ class BookingData {
   final String bookedBy;
   final BookingStatus status;
   final String? bookingReason;
+  final String? rejectReason;
 
   BookingData({
     required this.roomNumber,
@@ -625,6 +704,7 @@ class BookingData {
     required this.bookedBy,
     required this.status,
     this.bookingReason,
+    this.rejectReason,
   });
 
   factory BookingData.fromJson(Map<String, dynamic> json) {
@@ -636,11 +716,18 @@ class BookingData {
       return '${pad(p[0].trim())} - ${pad(p[1].trim())}';
     }
 
-    // 👇 ดึงเหตุผลจาก backend (ถ้า key ชื่ออื่น แก้ตรงนี้เอา)
-    final rawReason = json['reason'];
+    final rawBookingReason =json['reason'];
     final String? bookingReason = (() {
-      if (rawReason == null) return null;
-      final t = rawReason.toString().trim();
+      if (rawBookingReason == null) return null;
+      final t = rawBookingReason.toString().trim();
+      return t.isEmpty ? null : t;
+    })();
+
+    // 👇 ดึง reject reason จาก backend
+    final rawRejectReason = json['reject_reason'];
+    final String? rejectReason = (() {
+      if (rawRejectReason == null) return null;
+      final t = rawRejectReason.toString().trim();
       return t.isEmpty ? null : t;
     })();
 
@@ -655,6 +742,7 @@ class BookingData {
                   '') as String,
       status: _parseStatus(json['status']),
       bookingReason: bookingReason,
+      rejectReason: rejectReason,
     );
   }
 
@@ -667,6 +755,8 @@ class BookingData {
     if (s == 'pending' || s == 'waiting') {
       return BookingStatus.pending;
     }
+
+    // ที่เหลือ (rejected / cancelled / อะไรก็ช่าง) → disabled = แสดงเป็น Rejected ใน UI นี้
     return BookingStatus.disabled;
   }
 }
