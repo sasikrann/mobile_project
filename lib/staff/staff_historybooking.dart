@@ -31,17 +31,24 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
     final List<dynamic> list = data['history'] ?? data['bookings'] ?? [];
 
     setState(() {
-      bookings = list.map((b) {
-        return BookingData(
-          roomNumber: b['room_name'] ?? '',
-          date: b['booking_date'] ?? '',
-          time: convertSlot(b['time_slot']),
-          bookedBy: b['student_name'] ?? '',
-          approvedBy: b['lecturer_name'] ?? '',
-          status: parseStatus(b['status'] ?? ''),
-        );
-      }).toList();
-    });
+  bookings = list.map((b) {
+    return BookingData(
+      roomNumber: b['room_name'] ?? '',
+      date: b['booking_date'] ?? '',
+      time: convertSlot(b['time_slot']),
+      bookedBy: b['student_name'] ?? '',
+
+      approvedBy: b['status'] == 'Approved' ? (b['lecturer_name'] ?? '') : '',
+      rejectedBy: b['status'] == 'Rejected' ? (b['lecturer_name'] ?? '') : '',
+      rejectReason: b['reject_reason'] ?? '',
+
+      status: parseStatus(b['status'] ?? ''),
+
+      roomStatus: b['room_status'] ?? '',   
+    );
+  }).toList();
+});
+
   }
 }
 
@@ -259,7 +266,27 @@ class _BookingCard extends StatefulWidget {
   State<_BookingCard> createState() => _BookingCardState();
 }
 
-class _BookingCardState extends State<_BookingCard> with SingleTickerProviderStateMixin {
+class _BookingCardState extends State<_BookingCard> with SingleTickerProviderStateMixin {bool get isRoomClosed {
+  final rs = widget.booking.roomStatus.toLowerCase();
+  return rs == 'disabled' || rs == 'closed';
+}
+
+Color get _statusColor {
+  return isRoomClosed ? const Color(0xFFE74C3C) : const Color(0xFF0FA968);
+}
+
+Color get _statusBgColor {
+  return isRoomClosed ? const Color(0xFFFFE8E8) : const Color(0xFFD4F4E6);
+}
+
+String get _statusText {
+  return isRoomClosed ? 'Room Closed' : 'Room Open';
+}
+
+IconData get _statusIcon {
+  return isRoomClosed ? Icons.block_rounded : Icons.check_circle_rounded;
+}
+
   bool _isPressed = false;
   late AnimationController _hoverController;
 
@@ -278,59 +305,10 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
     super.dispose();
   }
 
-  Color get _statusColor {
-  switch (widget.booking.status) {
-    case BookingStatus.approved:
-      return const Color(0xFF0FA968);
-    case BookingStatus.pending:
-      return const Color(0xFFE67E22);
-    case BookingStatus.rejected:
-      return const Color(0xFFD9534F);  
-    case BookingStatus.disabled:
-      return const Color(0xFFE74C3C);
-  }
-}
+ 
 
 
-  Color get _statusBgColor {
-  switch (widget.booking.status) {
-    case BookingStatus.approved:
-      return const Color(0xFFD4F4E6);
-    case BookingStatus.pending:
-      return const Color(0xFFFDEDD7);
-    case BookingStatus.rejected:
-      return const Color(0xFFFFE5E5);  
-    case BookingStatus.disabled:
-      return const Color(0xFFFFE8E8);
-  }
-}
-
-
-  String get _statusText {
-  switch (widget.booking.status) {
-    case BookingStatus.approved:
-      return 'Approved';
-    case BookingStatus.pending:
-      return 'Pending';
-    case BookingStatus.rejected:
-      return 'Rejected';  // << เพิ่ม
-    case BookingStatus.disabled:
-      return 'Room Closed';
-  }
-}
-
-  IconData get _statusIcon {
-  switch (widget.booking.status) {
-    case BookingStatus.approved:
-      return Icons.check_circle_rounded;
-    case BookingStatus.pending:
-      return Icons.schedule_rounded;
-    case BookingStatus.rejected:
-      return Icons.cancel_rounded;  // << เพิ่ม
-    case BookingStatus.disabled:
-      return Icons.block_rounded;
-  }
-}
+  
 
 
   @override
@@ -712,15 +690,40 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                         // People Info
                         Column(
                           children: [
-                            if (widget.booking.approvedBy.isNotEmpty) ...[
-                              _buildPersonInfo(
-                                icon: Icons.verified_rounded,
-                                label: 'Approved by',
-                                name: widget.booking.approvedBy,
-                                bgColor: const Color(0xFFD4F4E6),
-                                iconColor: const Color(0xFF0FA968),
-                              ),
-                            ],
+                            // Approved
+if (widget.booking.status == BookingStatus.approved) ...[
+  _buildPersonInfo(
+    icon: Icons.verified_rounded,
+    label: 'Approved by',
+    name: widget.booking.approvedBy,
+    bgColor: const Color(0xFFD4F4E6),
+    iconColor: const Color(0xFF0FA968),
+  ),
+]
+
+// Rejected
+else if (widget.booking.status == BookingStatus.rejected) ...[
+  _buildPersonInfo(
+    icon: Icons.cancel_rounded,
+    label: 'Rejected by',
+    name: widget.booking.rejectedBy,
+    bgColor: const Color(0xFFFFE5E5),
+    iconColor: const Color(0xFFD9534F),
+  ),
+  if (widget.booking.rejectReason.isNotEmpty)
+    Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(
+        'Reason: ${widget.booking.rejectReason}',
+        style: const TextStyle(
+          color: Color(0xFFD9534F),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+]
+
                           ],
                         ),
                       ],
@@ -822,8 +825,14 @@ class BookingData {
   final String date;
   final String time;
   final String bookedBy;
+
+  
   final String approvedBy;
+  final String rejectedBy;
+  final String rejectReason;
+
   final BookingStatus status;
+  final String roomStatus;
 
   BookingData({
     required this.roomNumber,
@@ -831,9 +840,13 @@ class BookingData {
     required this.time,
     required this.bookedBy,
     required this.approvedBy,
+    required this.rejectedBy,
+    required this.rejectReason,
     required this.status,
+    required this.roomStatus,
   });
 }
+
 BookingStatus parseStatus(String s) {
   switch (s.toLowerCase()) {
     case 'approved':

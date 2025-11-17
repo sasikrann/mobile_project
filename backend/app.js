@@ -757,6 +757,8 @@ app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
       r.id AS room_id,
       r.name AS room_name,
 
+      r.status AS room_status,
+
       lec.id AS lecturer_id,
       lec.name AS lecturer_name,
 
