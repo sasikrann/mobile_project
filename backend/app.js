@@ -770,7 +770,10 @@ app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
     JOIN users stu ON stu.id = b.user_id
     JOIN rooms r ON r.id = b.room_id
     LEFT JOIN users lec ON lec.id = b.approver_id
+    WHERE DATE(b.booking_date) = CURDATE()
     ORDER BY b.created_at DESC
+    
+
   `;
 
   db.query(sql, (err, rows) => {
