@@ -26,22 +26,25 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
   if (res.statusCode == 200) {
     final data = json.decode(res.body);
 
-    final List<dynamic> list = data['history'];  // ← เปลี่ยนตรงนี้
+    print(data); // 
+
+    final List<dynamic> list = data['history'] ?? data['bookings'] ?? [];
 
     setState(() {
       bookings = list.map((b) {
         return BookingData(
-          roomNumber: b['room_name'].toString(),
-          date: b['booking_date'].toString(),
+          roomNumber: b['room_name'] ?? '',
+          date: b['booking_date'] ?? '',
           time: convertSlot(b['time_slot']),
           bookedBy: b['student_name'] ?? '',
           approvedBy: b['lecturer_name'] ?? '',
-          status: parseStatus(b['status']),
+          status: parseStatus(b['status'] ?? ''),
         );
       }).toList();
     });
   }
 }
+
 
 
 
@@ -276,48 +279,59 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
   }
 
   Color get _statusColor {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return const Color(0xFF0FA968);
-      case BookingStatus.pending:
-        return const Color(0xFFE67E22);
-      case BookingStatus.disabled:
-        return const Color(0xFFE74C3C);
-    }
+  switch (widget.booking.status) {
+    case BookingStatus.approved:
+      return const Color(0xFF0FA968);
+    case BookingStatus.pending:
+      return const Color(0xFFE67E22);
+    case BookingStatus.rejected:
+      return const Color(0xFFD9534F);  
+    case BookingStatus.disabled:
+      return const Color(0xFFE74C3C);
   }
+}
+
 
   Color get _statusBgColor {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return const Color(0xFFD4F4E6);
-      case BookingStatus.pending:
-        return const Color(0xFFFDEDD7);
-      case BookingStatus.disabled:
-        return const Color(0xFFFFE8E8);
-    }
+  switch (widget.booking.status) {
+    case BookingStatus.approved:
+      return const Color(0xFFD4F4E6);
+    case BookingStatus.pending:
+      return const Color(0xFFFDEDD7);
+    case BookingStatus.rejected:
+      return const Color(0xFFFFE5E5);  
+    case BookingStatus.disabled:
+      return const Color(0xFFFFE8E8);
   }
+}
+
 
   String get _statusText {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return 'Approved';
-      case BookingStatus.pending:
-        return 'Pending';
-      case BookingStatus.disabled:
-        return 'Room Closed';
-    }
+  switch (widget.booking.status) {
+    case BookingStatus.approved:
+      return 'Approved';
+    case BookingStatus.pending:
+      return 'Pending';
+    case BookingStatus.rejected:
+      return 'Rejected';  // << เพิ่ม
+    case BookingStatus.disabled:
+      return 'Room Closed';
   }
+}
 
   IconData get _statusIcon {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return Icons.check_circle_rounded;
-      case BookingStatus.pending:
-        return Icons.schedule_rounded;
-      case BookingStatus.disabled:
-        return Icons.block_rounded;
-    }
+  switch (widget.booking.status) {
+    case BookingStatus.approved:
+      return Icons.check_circle_rounded;
+    case BookingStatus.pending:
+      return Icons.schedule_rounded;
+    case BookingStatus.rejected:
+      return Icons.cancel_rounded;  // << เพิ่ม
+    case BookingStatus.disabled:
+      return Icons.block_rounded;
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -799,6 +813,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
 enum BookingStatus {
   approved,
   pending,
+  rejected,
   disabled,
 }
 
@@ -820,16 +835,18 @@ class BookingData {
   });
 }
 BookingStatus parseStatus(String s) {
-  switch (s) {
+  switch (s.toLowerCase()) {
     case 'approved':
       return BookingStatus.approved;
     case 'pending':
       return BookingStatus.pending;
     case 'rejected':
+      return BookingStatus.rejected; 
     default:
       return BookingStatus.disabled;
   }
 }
+
 String convertSlot(String slot) {
   switch (slot) {
     case '8-10':
