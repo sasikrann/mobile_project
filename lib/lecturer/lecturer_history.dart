@@ -501,9 +501,109 @@ class _BookingCard extends StatelessWidget {
                   ],
                 ),
               ),
+
+              if (booking.status == BookingStatus.pending && 
+                  booking.bookingReason != null &&
+                  booking.bookingReason!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _bookingReasonBox(),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+    Widget _bookingReasonBox() {
+    if (booking.bookingReason == null || booking.bookingReason!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // ใช้สีตามสถานะให้ฟีลคล้าย student
+    final isPending = booking.status == BookingStatus.pending;
+    final isApproved = booking.status == BookingStatus.approved;
+
+    final Color base = isPending
+        ? const Color(0xFFE67E22) // pending -> ส้ม (ตาม status เดิม)
+        : isApproved
+            ? const Color(0xFF0FA968) // approved -> เขียว
+            : const Color(0xFF8B6F47); // disabled/อื่น ๆ -> น้ำตาลกลาง ๆ
+
+    final Color bg = isPending
+        ? const Color(0xFFFDEDD7)
+        : isApproved
+            ? const Color(0xFFD4F4E6)
+            : const Color(0xFFFFF3E0);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: base.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.chat_bubble_rounded,
+                size: 16,
+                color: base.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Booking Reason',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: base.withValues(alpha: 0.9),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: base.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reason: ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF8B6F47).withValues(alpha: 0.9),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    booking.bookingReason!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2D1810),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -517,6 +617,7 @@ class BookingData {
   final String time;
   final String bookedBy;
   final BookingStatus status;
+  final String? bookingReason;
 
   BookingData({
     required this.roomNumber,
@@ -524,10 +625,9 @@ class BookingData {
     required this.time,
     required this.bookedBy,
     required this.status,
+    this.bookingReason,
   });
 
-  // ✅ แปลง JSON จากหลังบ้าน -> BookingData
-  // ✅ แปลง JSON จากหลังบ้าน -> BookingData พร้อม format เวลาแบบไทย
   factory BookingData.fromJson(Map<String, dynamic> json) {
     String fmt(dynamic raw) {
       final s = (raw ?? '').toString();
@@ -537,6 +637,14 @@ class BookingData {
       return '${pad(p[0].trim())} - ${pad(p[1].trim())}';
     }
 
+    // 👇 ดึงเหตุผลจาก backend (ถ้า key ชื่ออื่น แก้ตรงนี้เอา)
+    final rawReason = json['reason'];
+    final String? bookingReason = (() {
+      if (rawReason == null) return null;
+      final t = rawReason.toString().trim();
+      return t.isEmpty ? null : t;
+    })();
+
     return BookingData(
       roomNumber: (json['room_name'] ?? json['room'] ?? '').toString(),
       date: (json['booking_date'] ?? json['date'] ?? '') as String,
@@ -545,13 +653,12 @@ class BookingData {
           (json['booked_by'] ??
                   json['lecturer_name'] ??
                   json['student_name'] ??
-                  '')
-              as String,
+                  '') as String,
       status: _parseStatus(json['status']),
+      bookingReason: bookingReason,
     );
   }
 
-  // แปลงสถานะจาก String ของ DB -> enum
   static BookingStatus _parseStatus(dynamic raw) {
     final s = (raw ?? '').toString().toLowerCase();
 
@@ -561,8 +668,6 @@ class BookingData {
     if (s == 'pending' || s == 'waiting') {
       return BookingStatus.pending;
     }
-
-    // เหลืออย่างอื่น (rejected / cancelled / closed / disabled) ให้แดงไว้
     return BookingStatus.disabled;
   }
 }
