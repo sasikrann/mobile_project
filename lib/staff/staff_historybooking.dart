@@ -30,13 +30,14 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
 
     setState(() {
       bookings = list.map((b) {
-        return BookingData(
-          roomNumber: b['room_name'].toString(),
-          date: b['booking_date'].toString(),
-          time: convertSlot(b['time_slot']),
-          bookedBy: b['student_name'] ?? '',
-          approvedBy: b['lecturer_name'] ?? '',
-          status: parseStatus(b['status']),
+      return BookingData(
+        roomNumber: b['room_name'].toString(),
+        date: b['booking_date'].toString(),
+        time: convertSlot(b['time_slot']),
+        bookedBy: b['student_name'] ?? '',
+        approvedBy: b['lecturer_name'] ?? '',
+        status: parseStatus(b['status']),          // สถานะ booking (Approved/Pending/Rejected)
+        roomStatus: (b['room_status'] ?? '').toString(), // สถานะห้องจาก rooms.status
         );
       }).toList();
     });
@@ -275,49 +276,33 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
     super.dispose();
   }
 
+  bool get _isRoomClosed {
+  final rs = widget.booking.roomStatus.toLowerCase();
+  return rs == 'disabled' || rs == 'closed';
+}
+
   Color get _statusColor {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return const Color(0xFF0FA968);
-      case BookingStatus.pending:
-        return const Color(0xFFE67E22);
-      case BookingStatus.disabled:
-        return const Color(0xFFE74C3C);
+      // ถ้าห้องปิด → แดง, ถ้าห้องเปิด → เขียว
+      return _isRoomClosed
+          ? const Color(0xFFE74C3C)
+          : const Color(0xFF0FA968);
     }
-  }
 
-  Color get _statusBgColor {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return const Color(0xFFD4F4E6);
-      case BookingStatus.pending:
-        return const Color(0xFFFDEDD7);
-      case BookingStatus.disabled:
-        return const Color(0xFFFFE8E8);
+    Color get _statusBgColor {
+      return _isRoomClosed
+          ? const Color(0xFFFFE8E8)
+          : const Color(0xFFD4F4E6);
     }
-  }
 
-  String get _statusText {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return 'Approved';
-      case BookingStatus.pending:
-        return 'Pending';
-      case BookingStatus.disabled:
-        return 'Room Closed';
+    String get _statusText {
+      return _isRoomClosed ? 'Room Closed' : 'Room Open';
     }
-  }
 
-  IconData get _statusIcon {
-    switch (widget.booking.status) {
-      case BookingStatus.approved:
-        return Icons.check_circle_rounded;
-      case BookingStatus.pending:
-        return Icons.schedule_rounded;
-      case BookingStatus.disabled:
-        return Icons.block_rounded;
+    IconData get _statusIcon {
+      return _isRoomClosed
+          ? Icons.block_rounded
+          : Icons.check_circle_rounded;
     }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -808,7 +793,8 @@ class BookingData {
   final String time;
   final String bookedBy;
   final String approvedBy;
-  final BookingStatus status;
+  final BookingStatus status;   // สถานะการจอง
+  final String roomStatus;      // สถานะห้อง
 
   BookingData({
     required this.roomNumber,
@@ -817,18 +803,21 @@ class BookingData {
     required this.bookedBy,
     required this.approvedBy,
     required this.status,
+    required this.roomStatus,
   });
 }
 BookingStatus parseStatus(String s) {
-  switch (s) {
-    case 'approved':
-      return BookingStatus.approved;
-    case 'pending':
-      return BookingStatus.pending;
-    case 'rejected':
-    default:
-      return BookingStatus.disabled;
+  final v = s.toLowerCase();
+
+  if (v == 'available' || v == 'open') {
+    return BookingStatus.approved; // หรือจะสร้าง BookingStatus.roomOpen แยกก็ได้
   }
+
+  if (v == 'disabled' || v == 'closed') {
+    return BookingStatus.disabled;  // Room Closed
+  }
+
+  return BookingStatus.pending;   // fallback
 }
 String convertSlot(String slot) {
   switch (slot) {
