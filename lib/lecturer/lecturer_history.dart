@@ -502,8 +502,7 @@ class _BookingCard extends StatelessWidget {
                 ),
               ),
 
-              if (booking.status == BookingStatus.pending && 
-                  booking.bookingReason != null &&
+              if (booking.bookingReason != null &&
                   booking.bookingReason!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _bookingReasonBox(),
