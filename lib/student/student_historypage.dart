@@ -14,6 +14,7 @@ class _Booking {
   final BookingStatus status;
   final String? approver;    // ชื่อคนอนุมัติ (nullable)
   final String? rejectReason;
+  final String? bookingReason; // เหตุผลที่ student กรอกตอนจอง
 
   const _Booking({
     required this.id,
@@ -23,6 +24,7 @@ class _Booking {
     required this.status,
     this.approver,
     this.rejectReason,
+    this.bookingReason,
   });
 
   _Booking copyWith({
@@ -33,6 +35,7 @@ class _Booking {
     BookingStatus? status,
     String? approver,
     String? rejectReason,
+    String? bookingReason,
   }) {
     return _Booking(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class _Booking {
       status: status ?? this.status,
       approver: approver ?? this.approver,
       rejectReason: rejectReason ?? this.rejectReason,
+      bookingReason: bookingReason ?? this.bookingReason,
     );
   }
 }
@@ -140,6 +144,14 @@ class _MyBookingsPageState extends State<MyBookingsPage>
           ..clear()
           ..addAll(rows.map((row) {
             final statusStr = (row['status'] ?? '').toString();
+
+            final rawReason = row['reason'];
+            final bookingReason = rawReason == null
+                ? null
+                : rawReason.toString().trim().isEmpty
+                    ? null
+                    : rawReason.toString().trim();
+
             return _Booking(
               id: row['booking_id'] as int,
               room: (row['room_name'] ?? '-').toString(),
@@ -150,6 +162,7 @@ class _MyBookingsPageState extends State<MyBookingsPage>
                   ? null
                   : row['approver_name'],
               rejectReason: (row['reject_reason'] as String?),
+              bookingReason: bookingReason,
             );
           }));
 
@@ -695,6 +708,91 @@ class _BookingCardState extends State<_BookingCard> {
     }
   }
 
+  Widget _bookingReasonBox(BookingStatus status, String? reason) {
+    if (reason == null || reason.isEmpty) return const SizedBox.shrink();
+
+    // สีแยกตามสถานะ
+    final bool isPending = status == BookingStatus.pending;
+    final Color base = isPending
+        ? const Color(0xFF7C3AED) // pending = ม่วง
+        : const Color(0xFF10B981); // confirmed = เขียว
+
+    final Color bg = isPending
+        ? const Color(0xFFEDE9FE)
+        : const Color(0xFFD1FAE5);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: base.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.chat_bubble_rounded,
+                size: 16,
+                color: base.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Booking Reason',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: base.withValues(alpha: 0.9),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: base.withValues(alpha: 0.18),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reason: ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF8B6F47).withValues(alpha: 0.85),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    reason,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final delay = widget.index * 0.1;
@@ -799,13 +897,11 @@ class _BookingCardState extends State<_BookingCard> {
                         if (widget.booking.status == BookingStatus.confirmed)
                           _approvedBox(widget.booking.approver),
 
-                        if (widget.booking.status ==
-                                BookingStatus.pending &&
+                        if (widget.booking.status == BookingStatus.pending &&
                             widget.onRequestCancel != null)
                           _cancelButton(widget.onRequestCancel!),
 
-                        if (widget.booking.status ==
-                                BookingStatus.cancelled ||
+                        if (widget.booking.status == BookingStatus.cancelled ||
                             widget.booking.status == BookingStatus.rejected)
                           _rejectedBox(
                             widget.booking.status,
