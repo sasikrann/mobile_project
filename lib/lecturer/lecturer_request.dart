@@ -31,13 +31,14 @@ enum BookingStatus { pending, approved, rejected }
 
 class Booking {
   final int id; // booking_id จาก DB
-  final String room; // ✅ เก็บชื่อห้องเป็น String แล้ว
+  final String room;
   final DateTime date;
   final TimeOfDay start;
   final TimeOfDay end;
   final String bookedBy;
   BookingStatus status;
   String? rejectReason;
+  final String? bookingReason;
 
   Booking({
     required this.id,
@@ -48,6 +49,7 @@ class Booking {
     required this.bookedBy,
     this.status = BookingStatus.pending,
     this.rejectReason,
+    this.bookingReason,
   });
 
   // ✅ แปลง JSON จากหลังบ้าน -> Booking
@@ -126,6 +128,15 @@ class Booking {
       status = BookingStatus.pending;
     }
 
+    // 👇 ดึง booking_reason / purpose / reason จาก backend
+    final rawBookingReason =
+        json['booking_reason'] ?? json['purpose'] ?? json['reason'];
+    String? bookingReason;
+    if (rawBookingReason != null) {
+      final t = rawBookingReason.toString().trim();
+      bookingReason = t.isEmpty ? null : t;
+    }
+
     return Booking(
       id: id,
       room: room,
@@ -135,6 +146,7 @@ class Booking {
       bookedBy: bookedBy,
       status: status,
       rejectReason: json['reject_reason'] as String?,
+      bookingReason: bookingReason,
     );
   }
 }
@@ -780,6 +792,12 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
                       ],
                     ),
                   ),
+                  
+                  if (b.bookingReason != null &&
+                      b.bookingReason!.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _bookingReasonCard(b),
+                  ],
 
                   if (b.status == BookingStatus.pending) ...[
                     const SizedBox(height: 16),
@@ -869,6 +887,87 @@ class _BookingRequestsPageState extends State<BookingRequestsPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+   Widget _bookingReasonCard(Booking b) {
+    if (b.bookingReason == null || b.bookingReason!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // ใช้โทนม่วงเดียวกับ Pending เพราะมันคือหน้า request
+    const base = Color(0xFF7C3AED);
+    const bg = Color(0xFFEDE9FE);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: base.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.chat_bubble_rounded,
+                size: 16,
+                color: base.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Booking Reason',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: base.withValues(alpha: 0.9),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: base.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reason: ',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF8B6F47).withValues(alpha: 0.9),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    b.bookingReason!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
