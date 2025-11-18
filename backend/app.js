@@ -617,7 +617,12 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
   const userId = req.user.id;
 
   // ตรวจสอบว่าการจองนี้เป็นของ user คนนั้นหรือไม่
-  const checkSql = 'SELECT * FROM bookings WHERE id = ?';
+  const updateSql = `
+  UPDATE bookings 
+  SET status = "Cancelled",
+      reject_reason = "Cancelled by Student"
+  WHERE id = ?`;
+
   db.query(checkSql, [bookingId], (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     if (result.length === 0)

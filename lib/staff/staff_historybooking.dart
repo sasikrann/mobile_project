@@ -41,7 +41,9 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
 
       approvedBy: b['status'] == 'Approved' ? (b['lecturer_name'] ?? '') : '',
       rejectedBy: b['status'] == 'Rejected' ? (b['lecturer_name'] ?? '') : '',
-      rejectReason: b['reject_reason'] ?? '',
+      rejectReason: (b['reject_reason'] ?? b['rejectReason'] ?? '').toString(),
+
+
 
       status: parseStatus(b['status'] ?? ''),
 
@@ -733,6 +735,31 @@ else if (widget.booking.status == BookingStatus.rejected) ...[
     ),
 ]
 
+// ✨ Cancelled → ใช้ข้อความ fix ไม่ใช้ rejectReason
+else if (widget.booking.status == BookingStatus.cancelled) ...[
+  _buildPersonInfo(
+    icon: Icons.person_off_rounded,
+    label: 'Cancelled by',
+    name: widget.booking.bookedBy,
+    bgColor: const Color(0xFFF0F0F0),
+    iconColor: const Color.fromARGB(255, 206, 64, 64),
+  ),
+  Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: Text(
+      'Reason: Cancelled by Student',
+      style: TextStyle(
+        color: const Color.fromARGB(255, 217, 83, 79),
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  ),
+]
+
+
+
+
                           ],
                         ),
                       ],
@@ -826,6 +853,7 @@ enum BookingStatus {
   approved,
   pending,
   rejected,
+  cancelled,
   disabled,
 }
 
@@ -865,6 +893,8 @@ BookingStatus parseStatus(String s) {
   if (v == 'approved') return BookingStatus.approved;
   if (v == 'pending') return BookingStatus.pending;
   if (v == 'rejected') return BookingStatus.rejected;
+  if (v == 'cancelled') return BookingStatus.cancelled;
+
 
   // ถ้า backend ส่งสถานะห้องเข้ามา เช่น open/closed/disabled
   if (v == 'open' || v == 'available') return BookingStatus.pending; 
