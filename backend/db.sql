@@ -25,12 +25,12 @@ CREATE TABLE rooms (
 );
 
 INSERT INTO rooms (name, description, capacity, image) VALUES 
-('Room 1', 'Room for entertainment', 6, '1.png'),
-('Room 2', 'This is room', 8, '2.jpg'),
-('Room 3', 'Room for mobile app', 3, '3.png'),
-('Room 4', 'For reading only', 5, '4.jpg'),
-('Room 5', 'For study', 3, '5.png'),
-('Room 6', 'description wow', 6, '6.png');
+('Room 1', 'Room for entertainment', 6, '/uploads/1.png'),
+('Room 2', 'This is room', 8, '/uploads/2.jpg'),
+('Room 3', 'Room for mobile app', 3, '/uploads/3.png'),
+('Room 4', 'For reading only', 5, '/uploads/4.jpg'),
+('Room 5', 'For study', 3, '/uploads/5.png'),
+('Room 6', 'description wow', 6, '/uploads/6.png');
 
 CREATE TABLE bookings (
   id INT AUTO_INCREMENT PRIMARY KEY,

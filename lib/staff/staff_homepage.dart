@@ -171,7 +171,7 @@ class _StaffHomePageState extends State<StaffHomePage>
                 );
               } else if ((room?['image'] ?? '').toString().isNotEmpty) {
                 return Image.network(
-                  '${Config.apiBase}/uploads/${room!['image']}',
+                  '${Config.apiBase}${room!['image']}',
                   width: 220,
                   height: 140,
                   fit: BoxFit.cover,
@@ -345,7 +345,7 @@ class _StaffHomePageState extends State<StaffHomePage>
               ),
               child: (img != null && img.toString().isNotEmpty)
                   ? Image.network(
-                      '${Config.apiBase}/uploads/$img',
+                      '${Config.apiBase}$img',
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,
