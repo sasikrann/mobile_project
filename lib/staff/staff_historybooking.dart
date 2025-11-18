@@ -19,30 +19,42 @@ class _StaffHistoryBookingPageState extends State<StaffHistoryBookingPage>
 
   late AnimationController _controller;
 
-  List<BookingData> bookings = [];
+  List<BookingData> bookings = []; // สร้าง list สำหรับเก็บข้อมูลประวัติการจองที่โหลดมาจาก API
   Future<void> loadBookings() async {
   final res = await ApiClient.get('/api/staff/bookings/history');
 
   if (res.statusCode == 200) {
     final data = json.decode(res.body);
 
-    final List<dynamic> list = data['history'];  // ← เปลี่ยนตรงนี้
+    print(data); // 
+
+    final List<dynamic> list = data['history'] ?? data['bookings'] ?? [];
 
     setState(() {
-      bookings = list.map((b) {
-      return BookingData(
-        roomNumber: b['room_name'].toString(),
-        date: b['booking_date'].toString(),
-        time: convertSlot(b['time_slot']),
-        bookedBy: b['student_name'] ?? '',
-        approvedBy: b['lecturer_name'] ?? '',
-        status: parseStatus(b['status']),          // สถานะ booking (Approved/Pending/Rejected)
-        roomStatus: (b['room_status'] ?? '').toString(), // สถานะห้องจาก rooms.status
-        );
-      }).toList();
-    });
+
+  bookings = list.map((b) {
+    return BookingData(
+      roomNumber: b['room_name'] ?? '',
+      date: b['booking_date'] ?? '',
+      time: convertSlot(b['time_slot']),
+      bookedBy: b['student_name'] ?? '',
+
+      approvedBy: b['status'] == 'Approved' ? (b['lecturer_name'] ?? '') : '',
+      rejectedBy: b['status'] == 'Rejected' ? (b['lecturer_name'] ?? '') : '',
+      rejectReason: b['reject_reason'] ?? '',
+
+      status: parseStatus(b['status'] ?? ''),
+
+      roomStatus: b['room_status'] ?? '',   
+    );
+  }).toList();
+});
+
+
+     
   }
 }
+
 
 
 
@@ -258,6 +270,8 @@ class _BookingCard extends StatefulWidget {
 }
 
 class _BookingCardState extends State<_BookingCard> with SingleTickerProviderStateMixin {
+
+
   bool _isPressed = false;
   late AnimationController _hoverController;
 
@@ -275,6 +289,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
     _hoverController.dispose();
     super.dispose();
   }
+
 
   bool get _isRoomClosed {
   final rs = widget.booking.roomStatus.toLowerCase();
@@ -303,6 +318,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
           ? Icons.block_rounded
           : Icons.check_circle_rounded;
     }
+
 
   @override
   Widget build(BuildContext context) {
@@ -683,15 +699,40 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
                         // People Info
                         Column(
                           children: [
-                            if (widget.booking.approvedBy.isNotEmpty) ...[
-                              _buildPersonInfo(
-                                icon: Icons.verified_rounded,
-                                label: 'Approved by',
-                                name: widget.booking.approvedBy,
-                                bgColor: const Color(0xFFD4F4E6),
-                                iconColor: const Color(0xFF0FA968),
-                              ),
-                            ],
+                            // Approved
+if (widget.booking.status == BookingStatus.approved) ...[
+  _buildPersonInfo(
+    icon: Icons.verified_rounded,
+    label: 'Approved by',
+    name: widget.booking.approvedBy,
+    bgColor: const Color(0xFFD4F4E6),
+    iconColor: const Color(0xFF0FA968),
+  ),
+]
+
+// Rejected
+else if (widget.booking.status == BookingStatus.rejected) ...[
+  _buildPersonInfo(
+    icon: Icons.cancel_rounded,
+    label: 'Rejected by',
+    name: widget.booking.rejectedBy,
+    bgColor: const Color(0xFFFFE5E5),
+    iconColor: const Color(0xFFD9534F),
+  ),
+  if (widget.booking.rejectReason.isNotEmpty)
+    Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(
+        'Reason: ${widget.booking.rejectReason}',
+        style: const TextStyle(
+          color: Color(0xFFD9534F),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+]
+
                           ],
                         ),
                       ],
@@ -784,6 +825,7 @@ class _BookingCardState extends State<_BookingCard> with SingleTickerProviderSta
 enum BookingStatus {
   approved,
   pending,
+  rejected,
   disabled,
 }
 
@@ -792,9 +834,17 @@ class BookingData {
   final String date;
   final String time;
   final String bookedBy;
+
+  
   final String approvedBy;
+
+  final String rejectedBy;
+  final String rejectReason;
+
+
   final BookingStatus status;   // สถานะการจอง
   final String roomStatus;      // สถานะห้อง
+
 
   BookingData({
     required this.roomNumber,
@@ -802,23 +852,28 @@ class BookingData {
     required this.time,
     required this.bookedBy,
     required this.approvedBy,
+    required this.rejectedBy,
+    required this.rejectReason,
     required this.status,
     required this.roomStatus,
   });
 }
+
 BookingStatus parseStatus(String s) {
   final v = s.toLowerCase();
 
-  if (v == 'available' || v == 'open') {
-    return BookingStatus.approved; // หรือจะสร้าง BookingStatus.roomOpen แยกก็ได้
-  }
+  if (v == 'approved') return BookingStatus.approved;
+  if (v == 'pending') return BookingStatus.pending;
+  if (v == 'rejected') return BookingStatus.rejected;
 
-  if (v == 'disabled' || v == 'closed') {
-    return BookingStatus.disabled;  // Room Closed
-  }
+  // ถ้า backend ส่งสถานะห้องเข้ามา เช่น open/closed/disabled
+  if (v == 'open' || v == 'available') return BookingStatus.pending; 
+  if (v == 'closed' || v == 'disabled') return BookingStatus.disabled;
 
-  return BookingStatus.pending;   // fallback
+  return BookingStatus.pending; // fallback
 }
+
+
 String convertSlot(String slot) {
   switch (slot) {
     case '8-10':
