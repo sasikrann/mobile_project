@@ -617,11 +617,7 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
   const userId = req.user.id;
 
   // ตรวจสอบว่าการจองนี้เป็นของ user คนนั้นหรือไม่
-  const updateSql = `
-  UPDATE bookings 
-  SET status = "Cancelled",
-      reject_reason = "Cancelled by Student"
-  WHERE id = ?`;
+  const checkSql = 'SELECT * FROM bookings WHERE id = ?';
 
   db.query(checkSql, [bookingId], (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -636,7 +632,11 @@ app.post('/api/bookings/:id/cancel', verifyToken, (req, res) => {
       return res.status(400).json({ message: 'Booking already cancelled' });
 
     // อัปเดตสถานะ
-    const updateSql = 'UPDATE bookings SET status = "Cancelled" WHERE id = ?';
+    const updateSql = `
+      UPDATE bookings 
+      SET status = "Cancelled",
+          reject_reason = "Cancelled by Student"
+      WHERE id = ?`;
     db.query(updateSql, [bookingId], (err2) => {
       if (err2) return res.status(500).json({ message: 'Failed to cancel booking' });
 
