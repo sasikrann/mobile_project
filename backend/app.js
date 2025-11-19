@@ -782,8 +782,10 @@ app.get('/api/staff/bookings/history', verifyToken, (req, res) => {
     JOIN rooms r ON r.id = b.room_id
     LEFT JOIN users lec ON lec.id = b.approver_id
     WHERE DATE(b.booking_date) = CURDATE()
+      AND b.status IN ('Approved', 'Rejected', 'Cancelled')
     ORDER BY b.created_at DESC
     
+
 
   `;
 
