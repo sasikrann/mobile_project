@@ -150,24 +150,20 @@ class _StudentHomePageState extends State<StudentHomePage>
 
   // ====== IMAGE WIDGET (BLOB base64 or asset fallback) ======
   Widget _roomImage({
-    required dynamic imageField, // base64 string or null
+    required dynamic imageField, // path string from API or null
     required String assetFallback,
     required Color tintColor,
     required Color bgColor,
   }) {
+    // ==== รูปที่มาจากการ fetch จาก backend (เหมือน imgPreview) ====
     if (imageField is String && imageField.isNotEmpty) {
-      try {
-        final bytes = base64Decode(imageField);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          cacheWidth: 400,
-          cacheHeight: 400,
-          errorBuilder: (_, _, _) => _assetFallback(bgColor, tintColor),
-        );
-      } catch (_) {
-        return _assetFallback(bgColor, tintColor);
-      }
+      return Image.network(
+        '${Config.apiBase}$imageField',
+        fit: BoxFit.cover,
+        cacheWidth: 400,
+        cacheHeight: 400,
+        errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+      );
     }
     // asset fallback
     return Image.asset(

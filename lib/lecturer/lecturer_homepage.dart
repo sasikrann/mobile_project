@@ -156,18 +156,13 @@ class _LecturerHomePageState extends State<LecturerHomePage>
     required Color bgColor,
   }) {
     if (imageField is String && imageField.isNotEmpty) {
-      try {
-        final bytes = base64Decode(imageField);
-        return Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          cacheWidth: 400,
-          cacheHeight: 400,
-          errorBuilder: (_, _, _) => _assetFallback(bgColor, tintColor),
-        );
-      } catch (_) {
-        return _assetFallback(bgColor, tintColor);
-      }
+      return Image.network(
+        '${Config.apiBase}$imageField',
+        fit: BoxFit.cover,
+        cacheWidth: 400,
+        cacheHeight: 400,
+        errorBuilder: (_, __, ___) => _assetFallback(bgColor, tintColor),
+      );
     }
     // asset fallback
     return Image.asset(
