@@ -8,6 +8,10 @@ const port = 3000;
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const http       = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+
 
 //---------------Middleware-------------------------------/
 app.use(cors({
@@ -15,6 +19,16 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// ใส่ cors ให้ socket.io (สำคัญมาก มิฉะนั้น Flutter เชื่อม WebSocket ไม่ได้)
+const io = new Server(server, {
+  cors: {
+    origin: '*',                                    // ตรงกับข้างบน
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false
+  }
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -662,6 +676,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+
 // ---------------- Add room --------------------//
 app.post('/api/rooms', verifyToken, upload.single('image'), (req, res) => {
   if (!req.user || req.user.role !== 'staff') {
@@ -699,46 +714,102 @@ app.post('/api/rooms', verifyToken, upload.single('image'), (req, res) => {
 });
 
 // --------------- Update rooms ------------------------//
+// --------------- Update rooms (แก้ไขห้อง + ส่ง Socket) ------------------------//
 app.put('/api/rooms/:id', verifyToken, upload.single('image'), (req, res) => {
+  // 1. เช็คสิทธิ์ Staff
   if (!req.user || req.user.role !== 'staff')
     return res.status(403).json({ message: 'Only staff can edit rooms' });
 
   const roomId = req.params.id;
 
+  // 2. เช็คว่ามี Booking ค้างอยู่หรือไม่
   checkHasActiveBookings(roomId, (errCheck, hasActive) => {
     if (errCheck) {
       console.error('Booking check error:', errCheck);
       return res.status(500).json({ message: 'Database error' });
     }
     if (hasActive) {
+      // ลบไฟล์ทิ้งถ้าแก้ไขไม่ได้
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: 'Cannot edit a room with active (Pending/Approved) bookings' });
     }
 
-    const { name, description, status, capacity } = req.body;
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+    // 3. ดึงข้อมูลห้องเก่าเพื่อเตรียมลบรูปเดิม (Optional)
+    const getOldImgSql = 'SELECT image FROM rooms WHERE id = ?';
+    db.query(getOldImgSql, [roomId], (errOld, resultOld) => {
+        if (errOld) return res.status(500).json({ message: 'Database error' });
+        
+        const oldImage = resultOld[0]?.image; 
 
-    const fields = [];
-    const values = [];
+        // เตรียมข้อมูลสำหรับ Update
+        const { name, description, status, capacity } = req.body;
+        // แก้ Path ให้เป็น Forward Slash (/) เสมอ
+        const imagePath = req.file 
+            ? `/uploads/${req.file.filename}`.replace(/\\/g, '/') 
+            : null;
 
-    if (name !== undefined) { fields.push('name = ?'); values.push(name); }
-    if (description !== undefined) { fields.push('description = ?'); values.push(description); }
-    if (capacity !== undefined) { fields.push('capacity = ?'); values.push(parseInt(capacity, 10) || 4); }
-    if (imagePath) { fields.push('image = ?'); values.push(imagePath); }
-    if (status !== undefined) { fields.push('status = ?'); values.push(status || 'available'); }
+        const fields = [];
+        const values = [];
 
-    if (fields.length === 0) {
-      return res.status(400).json({ message: 'No fields provided for update' });
-    }
+        if (name !== undefined) { fields.push('name = ?'); values.push(name); }
+        if (description !== undefined) { fields.push('description = ?'); values.push(description); }
+        if (capacity !== undefined) { fields.push('capacity = ?'); values.push(parseInt(capacity, 10) || 4); }
+        if (status !== undefined) { fields.push('status = ?'); values.push(status); }
+        if (imagePath) { fields.push('image = ?'); values.push(imagePath); }
 
-    const sql = `UPDATE rooms SET ${fields.join(', ')} WHERE id = ?`;
-    values.push(roomId);
+        if (fields.length === 0) {
+            return res.status(400).json({ message: 'No fields provided for update' });
+        }
 
-    db.query(sql, values, err => {
-      if (err) {
-        console.error('PUT /api/rooms/:id error:', err);
-        return res.status(500).json({ message: 'Update failed' });
-      }
-      res.json({ message: 'Room updated successfully' });
+        const sql = `UPDATE rooms SET ${fields.join(', ')} WHERE id = ?`;
+        values.push(roomId);
+
+        // 4. เริ่มทำการ Update ลง Database
+        db.query(sql, values, (err) => {
+            if (err) {
+                console.error('PUT /api/rooms/:id error:', err);
+                return res.status(500).json({ message: 'Update failed' });
+            }
+
+            // -----------------------------------------------------------
+            // 🔥 จุดสำคัญที่แก้ Error: ต้อง SELECT ข้อมูลล่าสุดออกมาก่อน 🔥
+            // -----------------------------------------------------------
+            const getLatestSql = 'SELECT * FROM rooms WHERE id = ?';
+            db.query(getLatestSql, [roomId], (errFetch, rows) => {
+                if (errFetch) {
+                    console.error('Fetch latest room error:', errFetch);
+                    return res.status(500).json({ message: 'Update success but fetch failed' });
+                }
+
+                // ✅ ประกาศตัวแปร latestRoom ตรงนี้
+                const latestRoom = rows[0]; 
+
+                // 5. ลบรูปเก่าออกจาก Server (ถ้ามีการเปลี่ยนรูป)
+                if (imagePath && oldImage) {
+                    const oldPath = path.join(__dirname, oldImage);
+                    if (fs.existsSync(oldPath)) {
+                        fs.unlink(oldPath, (errUnlink) => {
+                            if (errUnlink) console.error('Delete old img failed:', errUnlink);
+                        });
+                    }
+                }
+
+                // 6. ส่ง Socket Broadcast (ถ้าคุณมีตัวแปร io)
+                // (เช็คให้ชัวร์ว่าคุณประกาศ io ไว้ที่ไหน ถ้า error ให้ comment ส่วนนี้ไปก่อน)
+                try {
+                    console.log(`Room ${latestRoom.name} updated → broadcasted via socket`);
+                    // io.emit('rooms_update', { action: 'update', room: latestRoom }); 
+                } catch (socketErr) {
+                    console.error('Socket emit error:', socketErr);
+                }
+
+                // 7. ส่ง Response กลับไปหา Staff
+                res.json({ 
+                    message: 'Room updated successfully', 
+                    room: latestRoom // ส่งข้อมูลล่าสุดกลับไป
+                });
+            });
+        });
     });
   });
 });
@@ -835,7 +906,21 @@ app.patch('/api/rooms/:id/status', verifyToken, (req, res) => {
   }
 });
 
+//socket.io//
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  socket.on('update-room', (data) => {
+    io.emit('room-updated', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
 // Ensure this runs last
-app.listen(port, '0.0.0.0', () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`API running at http://localhost:${port}`);
 });

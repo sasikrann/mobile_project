@@ -4,7 +4,7 @@ import 'auth_storage.dart';
 
 class Config {
   // ✅ ตั้งไว้จุดเดียว เปลี่ยนที่เดียวทั้งแอป
-  static const apiBase = 'http://192.168.0.107:3000';
+  static const apiBase = 'http://192.168.4.100:3000';
 }
 
 class ApiClient {
@@ -17,9 +17,16 @@ class ApiClient {
     return res;
   }
 
-  static Future<http.Response> post(String path, {Map<String, dynamic>? body}) async {
+  static Future<http.Response> post(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final headers = await AuthStorage.authHeaders();
-    final res = await http.post(_u(path), headers: headers, body: jsonEncode(body ?? {}));
+    final res = await http.post(
+      _u(path),
+      headers: headers,
+      body: jsonEncode(body ?? {}),
+    );
     _throwIfUnauthorized(res);
     return res;
   }
